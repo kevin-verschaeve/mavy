@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,17 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert
+  Alert,
+  Pressable
 } from 'react-native';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
-import { actionFieldService } from '../services/actionFieldService';
 import ActionButton from '../components/ActionButton';
+import { useToast } from '../components/Toast';
+import Loading from '../components/Loading';
+import SearchBar from '../components/SearchBar';
+import { InlineHint } from '../components/GestureHint';
+import { colors, spacing, typography, borderRadius, touchTargets } from '../constants/theme';
 
 export default function CategoryScreen({ route, navigation }) {
   const { categoryId, categoryName } = route.params;
@@ -21,17 +26,27 @@ export default function CategoryScreen({ route, navigation }) {
   const [newActionName, setNewActionName] = useState('');
   const [isConfigurable, setIsConfigurable] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showGestureHint, setShowGestureHint] = useState(true);
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadActions();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadActions();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const loadActions = async () => {
     try {
       const data = await actionService.getByCategory(categoryId);
       setActions(data);
-      
-      // Charger la dernière entrée pour chaque action
+
       const entries = {};
       for (const action of data) {
         const lastEntry = await entryService.getLastEntry(action.id);
@@ -44,6 +59,14 @@ export default function CategoryScreen({ route, navigation }) {
       setLoading(false);
     }
   };
+
+  const filteredActions = useMemo(() => {
+    if (!searchQuery.trim()) return actions;
+    const query = searchQuery.toLowerCase();
+    return actions.filter(action =>
+      action.name.toLowerCase().includes(query)
+    );
+  }, [actions, searchQuery]);
 
   const handleAddAction = async () => {
     if (!newActionName.trim()) {
@@ -58,39 +81,29 @@ export default function CategoryScreen({ route, navigation }) {
       setIsConfigurable(false);
       setShowAddForm(false);
 
-      // Si l'action est configurable, naviguer vers l'écran de configuration
       if (isConfigurable) {
-        navigation.navigate('ConfigureAction', {
-          actionId,
-          actionName
-        });
+        navigation.navigate('ConfigureAction', { actionId, actionName });
       }
 
       loadActions();
+      showToast('Action creee');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de créer l\'action');
+      Alert.alert('Erreur', 'Impossible de creer l\'action');
     }
   };
 
   const handleActionPress = async (action) => {
-    // Si l'action est configurable, naviguer vers le formulaire de saisie
     if (action.is_configurable === 1) {
-      navigation.navigate('AddEntry', {
-        action
-      });
+      navigation.navigate('AddEntry', { action });
       return;
     }
 
-    // Sinon, créer l'entrée directement
     try {
       await entryService.create(action.id);
-      Alert.alert(
-        '✅ Enregistré !',
-        `"${action.name}" a été enregistré avec succès`,
-        [{ text: 'OK', onPress: () => loadActions() }]
-      );
+      showToast(`"${action.name}" enregistre`);
+      loadActions();
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entrée');
+      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entree');
     }
   };
 
@@ -106,19 +119,9 @@ export default function CategoryScreen({ route, navigation }) {
       'Options',
       `Que voulez-vous faire avec "${action.name}" ?`,
       [
-        {
-          text: 'Renommer',
-          onPress: () => handleRenameAction(action)
-        },
-        {
-          text: 'Supprimer',
-          onPress: () => handleDeleteAction(action),
-          style: 'destructive'
-        },
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        }
+        { text: 'Renommer', onPress: () => handleRenameAction(action) },
+        { text: 'Supprimer', onPress: () => handleDeleteAction(action), style: 'destructive' },
+        { text: 'Annuler', style: 'cancel' }
       ]
     );
   };
@@ -128,21 +131,18 @@ export default function CategoryScreen({ route, navigation }) {
       'Renommer l\'action',
       'Entrez le nouveau nom :',
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Renommer',
           onPress: async (newName) => {
             if (!newName || !newName.trim()) {
-              Alert.alert('Erreur', 'Le nom ne peut pas être vide');
+              Alert.alert('Erreur', 'Le nom ne peut pas etre vide');
               return;
             }
             try {
               await actionService.update(action.id, newName.trim());
               loadActions();
-              Alert.alert('✅ Succès', 'Action renommée');
+              showToast('Action renommee');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de renommer l\'action');
             }
@@ -157,19 +157,16 @@ export default function CategoryScreen({ route, navigation }) {
   const handleDeleteAction = (action) => {
     Alert.alert(
       'Confirmer la suppression',
-      `Êtes-vous sûr de vouloir supprimer "${action.name}" et toutes ses entrées ?`,
+      `Supprimer "${action.name}" et toutes ses entrees ?`,
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           onPress: async () => {
             try {
               await actionService.delete(action.id);
               loadActions();
-              Alert.alert('✅ Succès', 'Action supprimée');
+              showToast('Action supprimee');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer l\'action');
             }
@@ -178,6 +175,15 @@ export default function CategoryScreen({ route, navigation }) {
         }
       ]
     );
+  };
+
+  const handleOutsidePress = () => {
+    if (showAddForm) {
+      setShowAddForm(false);
+    }
+    if (showGestureHint) {
+      setShowGestureHint(false);
+    }
   };
 
   const renderAction = ({ item }) => (
@@ -191,59 +197,75 @@ export default function CategoryScreen({ route, navigation }) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
-      </View>
-    );
+    return <Loading message="Chargement des actions..." />;
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{categoryName}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => setShowAddForm(!showAddForm)}
+          accessibilityLabel="Ajouter une action"
+          accessibilityRole="button"
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Rechercher une action..."
+      />
+
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
           <TextInput
             style={styles.input}
-            placeholder="Nom de l'action (ex: Révision voiture)"
+            placeholder="Nom de l'action (ex: Revision voiture)"
             value={newActionName}
             onChangeText={setNewActionName}
+            autoFocus
           />
           <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() => setIsConfigurable(!isConfigurable)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isConfigurable }}
           >
             <View style={[styles.checkbox, isConfigurable && styles.checkboxChecked]}>
               {isConfigurable && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={styles.checkboxLabel}>Configurable ?</Text>
+            <Text style={styles.checkboxLabel}>Configurable (avec champs personnalises)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.submitButton} onPress={handleAddAction}>
-            <Text style={styles.submitButtonText}>Créer</Text>
+            <Text style={styles.submitButtonText}>Creer</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <FlatList
-        data={actions}
-        renderItem={renderAction}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune action. Créez-en une pour commencer à tracker !
-          </Text>
-        }
+      <InlineHint
+        visible={showGestureHint && actions.length > 0}
+        message="Appui long sur une action pour plus d'options"
       />
+
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={filteredActions}
+          renderItem={renderAction}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {searchQuery
+                ? 'Aucune action trouvee'
+                : 'Aucune action. Creez-en une pour commencer a tracker !'}
+            </Text>
+          }
+        />
+      </Pressable>
     </View>
   );
 }
@@ -251,96 +273,101 @@ export default function CategoryScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#3b82f6',
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    borderRadius: touchTargets.minimum / 2,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '300',
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.regular,
   },
   addForm: {
-    backgroundColor: 'white',
-    padding: 16,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: typography.sizes.md,
+    marginBottom: spacing.md,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+    minHeight: touchTargets.minimum,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   checkboxChecked: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkmark: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
   },
   checkboxLabel: {
-    fontSize: 16,
-    color: '#1f2937',
+    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    flex: 1,
   },
   submitButton: {
-    backgroundColor: '#3b82f6',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
   },
   list: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#6b7280',
-    fontSize: 16,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.md,
     marginTop: 40,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
 });

@@ -1,39 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
   TextInput,
-  Alert 
+  Alert,
+  Pressable
 } from 'react-native';
 import { categoryService } from '../services/categoryService';
+import { useToast } from '../components/Toast';
+import Loading from '../components/Loading';
+import SearchBar from '../components/SearchBar';
+import SwipeableRow from '../components/SwipeableRow';
+import { InlineHint } from '../components/GestureHint';
+import { colors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showGestureHint, setShowGestureHint] = useState(true);
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCategories();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const loadCategories = async () => {
     try {
       const data = await categoryService.getAll();
       setCategories(data);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de charger les catégories');
+      Alert.alert('Erreur', 'Impossible de charger les categories');
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return categories;
+    const query = searchQuery.toLowerCase();
+    return categories.filter(cat =>
+      cat.name.toLowerCase().includes(query)
+    );
+  }, [categories, searchQuery]);
+
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un nom de catégorie');
+      Alert.alert('Erreur', 'Veuillez entrer un nom de categorie');
       return;
     }
 
@@ -42,55 +68,31 @@ export default function HomeScreen({ navigation }) {
       setNewCategoryName('');
       setShowAddForm(false);
       loadCategories();
+      showToast('Categorie creee');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de créer la catégorie');
+      Alert.alert('Erreur', 'Impossible de creer la categorie');
     }
-  };
-
-  const handleCategoryLongPress = (category) => {
-    Alert.alert(
-      'Options',
-      `Que voulez-vous faire avec "${category.name}" ?`,
-      [
-        {
-          text: 'Renommer',
-          onPress: () => handleRenameCategory(category)
-        },
-        {
-          text: 'Supprimer',
-          onPress: () => handleDeleteCategory(category),
-          style: 'destructive'
-        },
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        }
-      ]
-    );
   };
 
   const handleRenameCategory = (category) => {
     Alert.prompt(
-      'Renommer la catégorie',
+      'Renommer la categorie',
       'Entrez le nouveau nom :',
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Renommer',
           onPress: async (newName) => {
             if (!newName || !newName.trim()) {
-              Alert.alert('Erreur', 'Le nom ne peut pas être vide');
+              Alert.alert('Erreur', 'Le nom ne peut pas etre vide');
               return;
             }
             try {
               await categoryService.update(category.id, newName.trim());
               loadCategories();
-              Alert.alert('✅ Succès', 'Catégorie renommée');
+              showToast('Categorie renommee');
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de renommer la catégorie');
+              Alert.alert('Erreur', 'Impossible de renommer la categorie');
             }
           }
         }
@@ -103,21 +105,18 @@ export default function HomeScreen({ navigation }) {
   const handleDeleteCategory = (category) => {
     Alert.alert(
       'Confirmer la suppression',
-      `Êtes-vous sûr de vouloir supprimer "${category.name}" et toutes ses actions ?`,
+      `Supprimer "${category.name}" et toutes ses actions ?`,
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           onPress: async () => {
             try {
               await categoryService.delete(category.id);
               loadCategories();
-              Alert.alert('✅ Succès', 'Catégorie supprimée');
+              showToast('Categorie supprimee');
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer la catégorie');
+              Alert.alert('Erreur', 'Impossible de supprimer la categorie');
             }
           },
           style: 'destructive'
@@ -126,65 +125,93 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
+  const handleOutsidePress = () => {
+    if (showAddForm) {
+      setShowAddForm(false);
+    }
+    if (showGestureHint) {
+      setShowGestureHint(false);
+    }
+  };
+
   const renderCategory = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.categoryCard, { borderLeftColor: item.color }]}
-      onPress={() => navigation.navigate('Category', {
-        categoryId: item.id,
-        categoryName: item.name
-      })}
-      onLongPress={() => handleCategoryLongPress(item)}
+    <SwipeableRow
+      onDelete={() => handleDeleteCategory(item)}
+      onEdit={() => handleRenameCategory(item)}
     >
-      <Text style={styles.categoryIcon}>{item.icon}</Text>
-      <Text style={styles.categoryName}>{item.name}</Text>
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.categoryCard, { borderLeftColor: item.color || colors.primary }]}
+        onPress={() => navigation.navigate('Category', {
+          categoryId: item.id,
+          categoryName: item.name
+        })}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.categoryIcon}>{item.icon}</Text>
+        <Text style={styles.categoryName}>{item.name}</Text>
+      </TouchableOpacity>
+    </SwipeableRow>
   );
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
-      </View>
-    );
+    return <Loading message="Chargement des categories..." />;
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Mes Trackers</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => setShowAddForm(!showAddForm)}
+          accessibilityLabel="Ajouter une categorie"
+          accessibilityRole="button"
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Rechercher une categorie..."
+      />
+
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
           <TextInput
             style={styles.input}
-            placeholder="Nom de la catégorie (ex: Voiture)"
+            placeholder="Nom de la categorie (ex: Voiture)"
             value={newCategoryName}
             onChangeText={setNewCategoryName}
+            autoFocus
           />
           <TouchableOpacity style={styles.submitButton} onPress={handleAddCategory}>
-            <Text style={styles.submitButtonText}>Créer</Text>
+            <Text style={styles.submitButtonText}>Creer</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <FlatList
-        data={categories}
-        renderItem={renderCategory}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune catégorie. Créez-en une pour commencer !
-          </Text>
-        }
+      <InlineHint
+        visible={showGestureHint && categories.length > 0}
+        message="Glissez vers la gauche pour modifier ou supprimer"
       />
+
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={filteredCategories}
+          renderItem={renderCategory}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {searchQuery
+                ? 'Aucune categorie trouvee'
+                : 'Aucune categorie. Creez-en une pour commencer !'}
+            </Text>
+          }
+        />
+      </Pressable>
     </View>
   );
 }
@@ -192,90 +219,89 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.sizes.xxxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3b82f6',
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    borderRadius: touchTargets.minimum / 2,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '300',
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.regular,
   },
   addForm: {
-    backgroundColor: 'white',
-    padding: 16,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: typography.sizes.md,
+    marginBottom: spacing.md,
   },
   submitButton: {
-    backgroundColor: '#3b82f6',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
   },
   list: {
-    padding: 16,
+    padding: spacing.lg,
   },
   categoryCard: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    ...shadows.md,
   },
   categoryIcon: {
     fontSize: 32,
-    marginRight: 16,
+    marginRight: spacing.lg,
   },
   categoryName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#6b7280',
-    fontSize: 16,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.md,
     marginTop: 40,
   },
 });
