@@ -9,6 +9,7 @@ import {
   Alert,
   Platform
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
@@ -16,7 +17,7 @@ import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
 import { InlineHint } from '../components/GestureHint';
 import { formatRelativeDate } from '../utils/dateUtils';
-import { colors, spacing, typography, borderRadius, shadows } from '../constants/theme';
+import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
 export default function ActionHistoryScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
@@ -83,7 +84,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
   const confirmDateChange = async (date) => {
     if (!selectedEntry) {
-      Alert.alert('Erreur', 'Aucune entree selectionnee');
+      Alert.alert('Erreur', 'Aucune entrée sélectionnée');
       return;
     }
 
@@ -93,7 +94,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
       setShowDatePicker(false);
       setSelectedEntry(null);
       loadEntries();
-      showToast('Date modifiee');
+      showToast('Date modifiée');
     } catch (error) {
       console.error('Erreur modification date:', error);
       Alert.alert('Erreur', 'Impossible de modifier la date');
@@ -103,7 +104,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
   const handleDelete = (entry) => {
     Alert.alert(
       'Confirmer la suppression',
-      'Supprimer cette entree ?',
+      'Supprimer cette entrée ?',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -112,9 +113,9 @@ export default function ActionHistoryScreen({ route, navigation }) {
             try {
               await entryService.delete(entry.id);
               loadEntries();
-              showToast('Entree supprimee');
+              showToast('Entrée supprimée');
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer l\'entree');
+              Alert.alert('Erreur', 'Impossible de supprimer l\'entrée');
             }
           },
           style: 'destructive'
@@ -143,7 +144,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
     }
   };
 
-  const renderEntry = ({ item }) => {
+  const renderEntry = ({ item, index }) => {
     let fieldValues = null;
     if (item.field_values) {
       try {
@@ -165,14 +166,20 @@ export default function ActionHistoryScreen({ route, navigation }) {
           onPress={() => handleEditDate(item)}
           activeOpacity={0.7}
         >
-          <Text style={styles.date}>{formatDisplayDate(item.created_at)}</Text>
+          <View style={styles.entryHeader}>
+            <View style={styles.entryNumber}>
+              <Text style={styles.entryNumberText}>#{entries.length - index}</Text>
+            </View>
+            <Text style={styles.date}>{formatDisplayDate(item.created_at)}</Text>
+          </View>
+
           {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
 
           {fieldValues && (
             <View style={styles.fieldsContainer}>
               {Object.entries(fieldValues).map(([key, value]) => (
                 <View key={key} style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>{key}:</Text>
+                  <Text style={styles.fieldLabel}>{key}</Text>
                   <Text style={styles.fieldValue}>{value}</Text>
                 </View>
               ))}
@@ -189,6 +196,30 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Header avec dégradé */}
+      <LinearGradient
+        colors={gradients.night}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerSubtitle}>Historique</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{entries.length}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
       <InlineHint
         visible={showGestureHint && entries.length > 0}
         message="Glissez vers la gauche pour supprimer, appuyez pour modifier la date"
@@ -208,9 +239,15 @@ export default function ActionHistoryScreen({ route, navigation }) {
           />
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune entree pour cette action.
-          </Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Text style={styles.emptyIconText}>📭</Text>
+            </View>
+            <Text style={styles.emptyText}>Aucune entrée</Text>
+            <Text style={styles.emptySubtext}>
+              L'historique apparaîtra ici
+            </Text>
+          </View>
         }
         onScrollBeginDrag={() => setShowGestureHint(false)}
       />
@@ -219,12 +256,11 @@ export default function ActionHistoryScreen({ route, navigation }) {
         <View style={styles.datePickerContainer}>
           <View style={styles.datePickerHeader}>
             <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-              <Text style={styles.datePickerButton}>Annuler</Text>
+              <Text style={styles.datePickerCancel}>Annuler</Text>
             </TouchableOpacity>
+            <Text style={styles.datePickerTitle}>Modifier la date</Text>
             <TouchableOpacity onPress={() => confirmDateChange(tempDate)}>
-              <Text style={[styles.datePickerButton, styles.confirmButton]}>
-                Confirmer
-              </Text>
+              <Text style={styles.datePickerConfirm}>Confirmer</Text>
             </TouchableOpacity>
           </View>
           <DateTimePicker
@@ -253,15 +289,81 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  header: {
+    paddingTop: spacing.huge,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  backButtonText: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginBottom: spacing.xs,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  badgeText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
   list: {
     padding: spacing.lg,
   },
   entryCard: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
     ...shadows.sm,
+  },
+  entryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  entryNumber: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.sm,
+  },
+  entryNumberText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
   },
   date: {
     fontSize: typography.sizes.md,
@@ -270,7 +372,7 @@ const styles = StyleSheet.create({
   },
   notes: {
     fontSize: typography.sizes.sm,
-    color: colors.gray600,
+    color: colors.warmGray600,
     marginTop: spacing.sm,
     fontStyle: 'italic',
   },
@@ -282,23 +384,49 @@ const styles = StyleSheet.create({
   },
   fieldRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   fieldLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.gray700,
-    marginRight: spacing.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
   },
   fieldValue: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.huge,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.warmGray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIconText: {
+    fontSize: 36,
   },
   emptyText: {
     textAlign: 'center',
-    color: colors.textSecondary,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    color: colors.textMuted,
     fontSize: typography.sizes.md,
-    marginTop: 40,
   },
   datePickerContainer: {
     position: 'absolute',
@@ -306,13 +434,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    ...shadows.lg,
   },
   datePickerHeader: {
     flexDirection: 'row',
@@ -323,11 +447,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  datePickerButton: {
-    fontSize: typography.sizes.lg,
-    color: colors.primary,
-  },
-  confirmButton: {
+  datePickerTitle: {
+    fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  datePickerCancel: {
+    fontSize: typography.sizes.md,
+    color: colors.textMuted,
+  },
+  datePickerConfirm: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
   },
 });

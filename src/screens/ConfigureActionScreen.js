@@ -9,10 +9,12 @@ import {
   Alert,
   Pressable
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { actionFieldService } from '../services/actionFieldService';
+import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import SwipeableRow from '../components/SwipeableRow';
-import { colors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
+import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function ConfigureActionScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
@@ -20,12 +22,53 @@ export default function ConfigureActionScreen({ route, navigation }) {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('text');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingField, setEditingField] = useState(null);
 
   const { showToast } = useToast();
 
   useEffect(() => {
     loadFields();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Si des champs ont été ajoutés, laisser partir normalement
+      if (fields.length > 0) {
+        return;
+      }
+
+      // Empêcher la navigation par défaut
+      e.preventDefault();
+
+      // Afficher une confirmation
+      Alert.alert(
+        'Action sans champs',
+        'Cette action n\'a aucun champ configuré. Voulez-vous la supprimer ?',
+        [
+          {
+            text: 'Continuer à configurer',
+            style: 'cancel',
+            onPress: () => {},
+          },
+          {
+            text: 'Supprimer l\'action',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await actionService.delete(actionId);
+                showToast('Action supprimée');
+                navigation.dispatch(e.data.action);
+              } catch (error) {
+                Alert.alert('Erreur', 'Impossible de supprimer l\'action');
+              }
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, fields, actionId]);
 
   const loadFields = async () => {
     try {
@@ -43,15 +86,28 @@ export default function ConfigureActionScreen({ route, navigation }) {
     }
 
     try {
-      await actionFieldService.create(actionId, newFieldName.trim(), newFieldType, fields.length);
+      if (editingField) {
+        await actionFieldService.update(editingField.id, newFieldName.trim(), newFieldType);
+        showToast('Champ modifié');
+      } else {
+        await actionFieldService.create(actionId, newFieldName.trim(), newFieldType, fields.length);
+        showToast('Champ ajouté');
+      }
       setNewFieldName('');
       setNewFieldType('text');
       setShowAddForm(false);
+      setEditingField(null);
       loadFields();
-      showToast('Champ ajoute');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de creer le champ');
+      Alert.alert('Erreur', editingField ? 'Impossible de modifier le champ' : 'Impossible de créer le champ');
     }
+  };
+
+  const handleEditField = (field) => {
+    setEditingField(field);
+    setNewFieldName(field.field_name);
+    setNewFieldType(field.field_type);
+    setShowAddForm(true);
   };
 
   const handleDeleteField = (field) => {
@@ -67,7 +123,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
             try {
               await actionFieldService.delete(field.id);
               loadFields();
-              showToast('Champ supprime');
+              showToast('Champ supprimé');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer le champ');
             }
@@ -80,17 +136,47 @@ export default function ConfigureActionScreen({ route, navigation }) {
   const handleOutsidePress = () => {
     if (showAddForm) {
       setShowAddForm(false);
+      setEditingField(null);
+      setNewFieldName('');
+      setNewFieldType('text');
     }
   };
 
   const renderField = ({ item }) => (
-    <SwipeableRow onDelete={() => handleDeleteField(item)}>
+    <SwipeableRow
+      onDelete={() => handleDeleteField(item)}
+      onEdit={() => handleEditField(item)}
+    >
       <View style={styles.fieldCard}>
         <View style={styles.fieldInfo}>
           <Text style={styles.fieldName}>{item.field_name}</Text>
-          <Text style={styles.fieldTypeText}>
-            {item.field_type === 'number' ? 'Nombre' : 'Texte'}
-          </Text>
+          <View style={[
+            styles.fieldTypeBadge,
+            { backgroundColor: item.field_type === 'number' ? colors.accent + '20' : colors.primary + '20' }
+          ]}>
+            <Text style={[
+              styles.fieldTypeBadgeText,
+              { color: item.field_type === 'number' ? colors.accent : colors.primary }
+            ]}>
+              {item.field_type === 'number' ? 'Nombre' : 'Texte'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.fieldActions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => handleEditField(item)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.iconButtonText}>✏️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.iconButton, styles.deleteIconButton]}
+            onPress={() => handleDeleteField(item)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.iconButtonText}>🗑️</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SwipeableRow>
@@ -98,36 +184,63 @@ export default function ConfigureActionScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={2}>Configuration : {actionName}</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowAddForm(!showAddForm)}
-          accessibilityLabel="Ajouter un champ"
-          accessibilityRole="button"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Header avec dégradé */}
+      <LinearGradient
+        colors={gradients.night}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerSubtitle}>Configuration</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddForm(!showAddForm)}
+            accessibilityLabel="Ajouter un champ"
+            accessibilityRole="button"
+          >
+            <LinearGradient colors={gradients.primary} style={styles.addButtonGradient}>
+              <Text style={styles.addButtonText}>{showAddForm ? '×' : '+'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Compteur de champs */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{fields.length}</Text>
+            <Text style={styles.statLabel}>champs configurés</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
       {showAddForm && (
         <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+          <Text style={styles.formTitle}>{editingField ? 'Modifier le champ' : 'Nouveau champ'}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nom du champ (ex: Prix, Kilometres)"
+            placeholder="Nom du champ (ex: Prix, Kilomètres)"
+            placeholderTextColor={colors.textMuted}
             value={newFieldName}
             onChangeText={setNewFieldName}
             autoFocus
           />
 
-          <Text style={styles.typeLabel}>Type de champ :</Text>
+          <Text style={styles.typeLabel}>Type de champ</Text>
           <View style={styles.typeSelector}>
             <TouchableOpacity
               style={[styles.typeButton, newFieldType === 'text' && styles.typeButtonSelected]}
               onPress={() => setNewFieldType('text')}
             >
               <Text style={[styles.typeButtonText, newFieldType === 'text' && styles.typeButtonTextSelected]}>
-                Texte
+                ABC Texte
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -135,13 +248,15 @@ export default function ConfigureActionScreen({ route, navigation }) {
               onPress={() => setNewFieldType('number')}
             >
               <Text style={[styles.typeButtonText, newFieldType === 'number' && styles.typeButtonTextSelected]}>
-                Nombre
+                123 Nombre
               </Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.submitButton} onPress={handleAddField}>
-            <Text style={styles.submitButtonText}>Ajouter</Text>
+            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+              <Text style={styles.submitButtonText}>{editingField ? 'Modifier' : 'Ajouter'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       )}
@@ -153,19 +268,44 @@ export default function ConfigureActionScreen({ route, navigation }) {
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              Aucun champ configure. Ajoutez-en pour personnaliser cette action !
-            </Text>
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIcon}>
+                <Text style={styles.emptyIconText}>⚙️</Text>
+              </View>
+              <Text style={styles.emptyText}>Aucun champ configuré</Text>
+              <Text style={styles.emptySubtext}>
+                Ajoutez des champs pour personnaliser cette action
+              </Text>
+            </View>
           }
         />
       </Pressable>
 
-      <TouchableOpacity
-        style={styles.doneButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.doneButtonText}>Termine</Text>
-      </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.doneButton, fields.length === 0 && styles.doneButtonDisabled]}
+          onPress={() => {
+            if (fields.length === 0) {
+              Alert.alert(
+                'Aucun champ',
+                'Vous devez ajouter au moins un champ avant de terminer la configuration.'
+              );
+              return;
+            }
+            navigation.goBack();
+          }}
+          disabled={fields.length === 0}
+        >
+          <LinearGradient
+            colors={fields.length === 0 ? [colors.warmGray300, colors.warmGray400] : gradients.forest}
+            style={styles.doneButtonGradient}
+          >
+            <Text style={styles.doneButtonText}>
+              {fields.length === 0 ? 'Ajoutez au moins 1 champ' : 'Terminé'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -179,67 +319,119 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingTop: spacing.huge,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  addButton: {
+  backButton: {
     width: touchTargets.minimum,
     height: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  backButtonText: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginBottom: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  addButton: {
     borderRadius: touchTargets.minimum / 2,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  addButtonGradient: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.regular,
+    fontWeight: typography.weights.medium,
+  },
+  statsContainer: {
+    marginTop: spacing.lg,
+  },
+  statCard: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.xxl,
+  },
+  statValue: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  statLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginTop: spacing.xs,
   },
   addForm: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: spacing.xl,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.md,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+  },
+  formTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     fontSize: typography.sizes.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.warmGray50,
+    color: colors.textPrimary,
   },
   typeLabel: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.gray700,
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   typeSelector: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   typeButton: {
     flex: 1,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: colors.gray300,
+    borderColor: colors.border,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.warmGray50,
     minHeight: touchTargets.minimum,
     justifyContent: 'center',
   },
@@ -248,7 +440,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   typeButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textSecondary,
   },
@@ -256,15 +448,18 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  submitButtonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
   },
   submitButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.bold,
   },
   list: {
     padding: spacing.lg,
@@ -272,7 +467,7 @@ const styles = StyleSheet.create({
   fieldCard: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -289,27 +484,80 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  fieldTypeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-    backgroundColor: colors.gray100,
+  fieldTypeBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
   },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.textSecondary,
-    fontSize: typography.sizes.md,
-    marginTop: 40,
+  fieldTypeBadgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+  },
+  fieldActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  iconButton: {
+    padding: spacing.xs,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.warmGray100,
+    minWidth: touchTargets.minimum,
+    minHeight: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteIconButton: {
+    backgroundColor: colors.danger + '15',
+  },
+  iconButtonText: {
+    fontSize: typography.sizes.lg,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.huge,
     paddingHorizontal: spacing.xl,
   },
-  doneButton: {
-    backgroundColor: colors.success,
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.warmGray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIconText: {
+    fontSize: 36,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: colors.textPrimary,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: typography.sizes.md,
+  },
+  footer: {
     padding: spacing.lg,
-    margin: spacing.lg,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  doneButton: {
     borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  doneButtonDisabled: {
+    opacity: 0.6,
+  },
+  doneButtonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
   },
   doneButtonText: {

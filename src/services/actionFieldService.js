@@ -31,6 +31,21 @@ export const actionFieldService = {
     }
   },
 
+  // Mettre à jour un champ
+  async update(id, fieldName, fieldType) {
+    const db = getTursoClient();
+    try {
+      await db.execute({
+        sql: 'UPDATE action_fields SET field_name = ?, field_type = ? WHERE id = ?',
+        args: [fieldName, fieldType, id]
+      });
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du champ:', error);
+      throw error;
+    }
+  },
+
   // Supprimer un champ
   async delete(id) {
     const db = getTursoClient();

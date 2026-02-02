@@ -7,10 +7,11 @@ import {
   PanResponder,
   TouchableOpacity,
 } from 'react-native';
-import { colors, spacing, typography, touchTargets } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, spacing, typography, touchTargets, gradients, borderRadius } from '../constants/theme';
 
 const SWIPE_THRESHOLD = 80;
-const DELETE_BUTTON_WIDTH = 80;
+const DELETE_BUTTON_WIDTH = 90;
 
 export default function SwipeableRow({ children, onDelete, onEdit }) {
   const translateX = useRef(new Animated.Value(0)).current;
@@ -68,17 +69,29 @@ export default function SwipeableRow({ children, onDelete, onEdit }) {
       <View style={styles.actionsContainer}>
         {onEdit && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.editButton]}
+            style={styles.actionButton}
             onPress={handleEdit}
+            activeOpacity={0.8}
           >
-            <Text style={styles.actionText}>Modifier</Text>
+            <LinearGradient
+              colors={gradients.ocean}
+              style={styles.actionButtonGradient}
+            >
+              <Text style={styles.actionText}>Modifier</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
+          style={styles.actionButton}
           onPress={handleDelete}
+          activeOpacity={0.8}
         >
-          <Text style={styles.actionText}>Supprimer</Text>
+          <LinearGradient
+            colors={['#f43f5e', '#dc2626']}
+            style={styles.actionButtonGradient}
+          >
+            <Text style={styles.actionText}>Supprimer</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
       <Animated.View
@@ -100,25 +113,30 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    bottom: 0,
+    bottom: spacing.md,
     flexDirection: 'row',
+    gap: spacing.xs,
+    paddingRight: spacing.xs,
   },
   actionButton: {
     width: DELETE_BUTTON_WIDTH,
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: touchTargets.minimum,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
   },
-  editButton: {
-    backgroundColor: colors.primary,
-  },
-  deleteButton: {
-    backgroundColor: colors.danger,
+  actionButtonGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
   actionText: {
     color: colors.textInverse,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
   },
   content: {
     backgroundColor: colors.surface,

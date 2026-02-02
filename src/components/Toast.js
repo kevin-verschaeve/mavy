@@ -76,7 +76,7 @@ function ToastItem({ toast, onHide }) {
       ? colors.success
       : toast.type === 'error'
         ? colors.danger
-        : colors.gray700;
+        : colors.warmGray700;
 
   return (
     <Animated.View
@@ -104,7 +104,7 @@ export function useToast() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
+    top: spacing.xs,
     left: spacing.lg,
     right: spacing.lg,
     zIndex: 9999,

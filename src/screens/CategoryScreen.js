@@ -9,6 +9,7 @@ import {
   Alert,
   Pressable
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import ActionButton from '../components/ActionButton';
@@ -16,10 +17,10 @@ import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
 import { InlineHint } from '../components/GestureHint';
-import { colors, spacing, typography, borderRadius, touchTargets } from '../constants/theme';
+import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows, categoryColors } from '../constants/theme';
 
 export default function CategoryScreen({ route, navigation }) {
-  const { categoryId, categoryName } = route.params;
+  const { categoryId, categoryName, colorIndex = 0 } = route.params;
   const [actions, setActions] = useState([]);
   const [lastEntries, setLastEntries] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
@@ -30,6 +31,7 @@ export default function CategoryScreen({ route, navigation }) {
   const [showGestureHint, setShowGestureHint] = useState(true);
 
   const { showToast } = useToast();
+  const categoryColor = categoryColors[colorIndex % categoryColors.length];
 
   useEffect(() => {
     loadActions();
@@ -86,9 +88,9 @@ export default function CategoryScreen({ route, navigation }) {
       }
 
       loadActions();
-      showToast('Action creee');
+      showToast('Action créée');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de creer l\'action');
+      Alert.alert('Erreur', 'Impossible de créer l\'action');
     }
   };
 
@@ -103,7 +105,7 @@ export default function CategoryScreen({ route, navigation }) {
       showToast(`"${action.name}" enregistre`);
       loadActions();
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entree');
+      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entrée');
     }
   };
 
@@ -136,13 +138,13 @@ export default function CategoryScreen({ route, navigation }) {
           text: 'Renommer',
           onPress: async (newName) => {
             if (!newName || !newName.trim()) {
-              Alert.alert('Erreur', 'Le nom ne peut pas etre vide');
+              Alert.alert('Erreur', 'Le nom ne peut pas être vide');
               return;
             }
             try {
               await actionService.update(action.id, newName.trim());
               loadActions();
-              showToast('Action renommee');
+              showToast('Action renommée');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de renommer l\'action');
             }
@@ -157,7 +159,7 @@ export default function CategoryScreen({ route, navigation }) {
   const handleDeleteAction = (action) => {
     Alert.alert(
       'Confirmer la suppression',
-      `Supprimer "${action.name}" et toutes ses entrees ?`,
+      `Supprimer "${action.name}" et toutes ses entrées ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -166,7 +168,7 @@ export default function CategoryScreen({ route, navigation }) {
             try {
               await actionService.delete(action.id);
               loadActions();
-              showToast('Action supprimee');
+              showToast('Action supprimée');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer l\'action');
             }
@@ -202,17 +204,38 @@ export default function CategoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{categoryName}</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowAddForm(!showAddForm)}
-          accessibilityLabel="Ajouter une action"
-          accessibilityRole="button"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Header avec dégradé */}
+      <LinearGradient
+        colors={gradients.night}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title} numberOfLines={1}>{categoryName}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{actions.length}</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddForm(!showAddForm)}
+            accessibilityLabel="Ajouter une action"
+            accessibilityRole="button"
+          >
+            <LinearGradient colors={gradients.primary} style={styles.addButtonGradient}>
+              <Text style={styles.addButtonText}>{showAddForm ? '×' : '+'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <SearchBar
         value={searchQuery}
@@ -222,9 +245,11 @@ export default function CategoryScreen({ route, navigation }) {
 
       {showAddForm && (
         <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+          <Text style={styles.formTitle}>Nouvelle action</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nom de l'action (ex: Revision voiture)"
+            placeholder="Nom de l'action (ex: Révision voiture)"
+            placeholderTextColor={colors.textMuted}
             value={newActionName}
             onChangeText={setNewActionName}
             autoFocus
@@ -238,10 +263,12 @@ export default function CategoryScreen({ route, navigation }) {
             <View style={[styles.checkbox, isConfigurable && styles.checkboxChecked]}>
               {isConfigurable && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={styles.checkboxLabel}>Configurable (avec champs personnalises)</Text>
+            <Text style={styles.checkboxLabel}>Configurable (avec champs personnalisés)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.submitButton} onPress={handleAddAction}>
-            <Text style={styles.submitButtonText}>Creer</Text>
+            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+              <Text style={styles.submitButtonText}>Créer</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       )}
@@ -258,11 +285,21 @@ export default function CategoryScreen({ route, navigation }) {
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {searchQuery
-                ? 'Aucune action trouvee'
-                : 'Aucune action. Creez-en une pour commencer a tracker !'}
-            </Text>
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIcon, { backgroundColor: categoryColor + '20' }]}>
+                <Text style={[styles.emptyIconText, { color: categoryColor }]}>📋</Text>
+              </View>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? 'Aucune action trouvée'
+                  : 'Aucune action dans cette catégorie'}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {searchQuery
+                  ? 'Essayez avec d\'autres termes'
+                  : 'Appuyez sur + pour en créer une'}
+              </Text>
+            </View>
           }
         />
       </Pressable>
@@ -279,57 +316,139 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingTop: spacing.huge,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  backButton: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  backButtonText: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  categoryDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.sm,
   },
   title: {
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
+    color: colors.textInverse,
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  badgeText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
   },
   addButton: {
+    borderRadius: touchTargets.minimum / 2,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  addButtonGradient: {
     width: touchTargets.minimum,
     height: touchTargets.minimum,
-    borderRadius: touchTargets.minimum / 2,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.regular,
+    fontWeight: typography.weights.medium,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  statLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginTop: spacing.xs,
+  },
+  statDivider: {
+    width: 3,
+    height: 30,
+    borderRadius: 2,
+    marginHorizontal: spacing.lg,
   },
   addForm: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: spacing.xl,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.md,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+  },
+  formTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     fontSize: typography.sizes.md,
     marginBottom: spacing.md,
+    backgroundColor: colors.warmGray50,
+    color: colors.textPrimary,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     minHeight: touchTargets.minimum,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: colors.gray300,
+    borderColor: colors.warmGray300,
     borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
@@ -346,28 +465,52 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: typography.sizes.md,
-    color: colors.textPrimary,
+    color: colors.textSecondary,
     flex: 1,
   },
   submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  submitButtonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
   },
   submitButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.bold,
   },
   list: {
     paddingVertical: spacing.lg,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.huge,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIconText: {
+    fontSize: 36,
+  },
   emptyText: {
     textAlign: 'center',
-    color: colors.textSecondary,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    color: colors.textMuted,
     fontSize: typography.sizes.md,
-    marginTop: 40,
-    paddingHorizontal: spacing.xl,
   },
 });

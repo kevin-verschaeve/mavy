@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   hint: {
-    backgroundColor: colors.gray800,
+    backgroundColor: colors.warmGray800,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.md,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dismissText: {
-    color: colors.gray400,
+    color: colors.warmGray400,
     fontSize: typography.sizes.xs,
     textAlign: 'center',
     marginTop: spacing.xs,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.primary,
   },
   inlineHintText: {
-    color: colors.gray700,
+    color: colors.warmGray700,
     fontSize: typography.sizes.sm,
   },
 });

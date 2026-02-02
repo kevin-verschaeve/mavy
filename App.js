@@ -25,42 +25,27 @@ function HomeStack() {
       <Stack.Screen
         name="Category"
         component={CategoryScreen}
-        options={({ route }) => ({
-          title: route.params?.categoryName || 'Categorie',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ActionHistory"
         component={ActionHistoryScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Historique',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ConfigureAction"
         component={ConfigureActionScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Configuration',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AddEntry"
         component={AddEntryScreen}
-        options={({ route }) => ({
-          title: route.params?.action?.name || 'Nouvelle entree',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="EditEntry"
         component={EditEntryScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Modifier l\'entree',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -75,7 +60,7 @@ export default function App() {
       try {
         const success = await initDatabase();
         if (!success) {
-          setError('Impossible d\'initialiser la base de donnees');
+          setError('Impossible d\'initialiser la base de données');
         }
       } catch (e) {
         console.error('Erreur lors de l\'initialisation:', e);
@@ -103,7 +88,7 @@ export default function App() {
         <Text style={styles.errorTitle}>Erreur</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.errorHint}>
-          Verifiez votre configuration Turso dans src/config/turso.js
+          Vérifiez votre configuration Turso dans src/config/turso.js
         </Text>
       </View>
     );
