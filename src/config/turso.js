@@ -2,8 +2,8 @@ import { createClient } from '@libsql/client/web';
 
 // Configuration Turso (utilise HTTPS pour compatibilité React Native)
 export const tursoConfig = {
-  url: '',
-  authToken: '',
+  url: process.env.EXPO_PUBLIC_TURSO_DATABASE_URL,
+  authToken: process.env.EXPO_PUBLIC_TURSO_AUTH_TOKEN,
 };
 
 // Client Turso

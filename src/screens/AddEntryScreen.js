@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
 
@@ -54,18 +55,22 @@ export default function AddEntryScreen({ route, navigation }) {
 
     try {
       await entryService.create(action.id, '', fieldValues);
-      Alert.alert(
-        '✅ Enregistré !',
-        `"${action.name}" a été enregistré avec succès`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Toast.show({
+        type: 'success',
+        text1: '✅ Enregistré !',
+        text2: `"${action.name}" a été enregistré avec succès`,
+        position: 'top',
+        visibilityTime: 2000
+      });
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entrée');
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur',
+        text2: 'Impossible d\'enregistrer l\'entrée',
+        position: 'top',
+        visibilityTime: 3000
+      });
     }
   };
 

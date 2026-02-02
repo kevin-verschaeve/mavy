@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
 
@@ -64,18 +65,22 @@ export default function EditEntryScreen({ route, navigation }) {
 
     try {
       await entryService.updateFieldValues(entry.id, fieldValues);
-      Alert.alert(
-        '✅ Modifié !',
-        `Les champs ont été modifiés avec succès`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Toast.show({
+        type: 'success',
+        text1: '✅ Modifié !',
+        text2: 'Les champs ont été modifiés avec succès',
+        position: 'top',
+        visibilityTime: 2000
+      });
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de modifier l\'entrée');
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur',
+        text2: 'Impossible de modifier l\'entrée',
+        position: 'top',
+        visibilityTime: 3000
+      });
     }
   };
 

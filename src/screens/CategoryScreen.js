@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import { actionFieldService } from '../services/actionFieldService';
@@ -84,13 +85,22 @@ export default function CategoryScreen({ route, navigation }) {
     // Sinon, créer l'entrée directement
     try {
       await entryService.create(action.id);
-      Alert.alert(
-        '✅ Enregistré !',
-        `"${action.name}" a été enregistré avec succès`,
-        [{ text: 'OK', onPress: () => loadActions() }]
-      );
+      Toast.show({
+        type: 'success',
+        text1: '✅ Enregistré !',
+        text2: `"${action.name}" a été enregistré avec succès`,
+        position: 'top',
+        visibilityTime: 2000
+      });
+      loadActions();
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entrée');
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur',
+        text2: 'Impossible d\'enregistrer l\'entrée',
+        position: 'top',
+        visibilityTime: 3000
+      });
     }
   };
 

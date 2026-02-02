@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Toast from 'react-native-toast-message';
 import { initDatabase } from './src/config/turso';
 import HomeScreen from './src/screens/HomeScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
@@ -110,9 +111,12 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <HomeStack />
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        <HomeStack />
+      </NavigationContainer>
+      <Toast />
+    </>
   );
 }
 
