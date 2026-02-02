@@ -76,7 +76,7 @@ function ToastItem({ toast, onHide }) {
       ? colors.success
       : toast.type === 'error'
         ? colors.danger
-        : colors.gray700;
+        : colors.warmGray700;
 
   return (
     <Animated.View

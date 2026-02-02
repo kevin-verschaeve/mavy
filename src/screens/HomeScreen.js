@@ -5,17 +5,29 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   Alert,
-  Pressable
+  Pressable,
+  StatusBar
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { categoryService } from '../services/categoryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
 import SwipeableRow from '../components/SwipeableRow';
+import Input from '../components/Input';
+import GradientButton from '../components/GradientButton';
 import { InlineHint } from '../components/GestureHint';
-import { colors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
+import {
+  colors,
+  gradients,
+  categoryColors,
+  spacing,
+  typography,
+  borderRadius,
+  touchTargets,
+  shadows
+} from '../constants/theme';
 
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
@@ -134,24 +146,39 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const renderCategory = ({ item }) => (
-    <SwipeableRow
-      onDelete={() => handleDeleteCategory(item)}
-      onEdit={() => handleRenameCategory(item)}
-    >
-      <TouchableOpacity
-        style={[styles.categoryCard, { borderLeftColor: item.color || colors.primary }]}
-        onPress={() => navigation.navigate('Category', {
-          categoryId: item.id,
-          categoryName: item.name
-        })}
-        activeOpacity={0.7}
+  const getCategoryColor = (index) => {
+    return categoryColors[index % categoryColors.length];
+  };
+
+  const renderCategory = ({ item, index }) => {
+    const accentColor = item.color || getCategoryColor(index);
+
+    return (
+      <SwipeableRow
+        onDelete={() => handleDeleteCategory(item)}
+        onEdit={() => handleRenameCategory(item)}
       >
-        <Text style={styles.categoryIcon}>{item.icon}</Text>
-        <Text style={styles.categoryName}>{item.name}</Text>
-      </TouchableOpacity>
-    </SwipeableRow>
-  );
+        <TouchableOpacity
+          style={styles.categoryCard}
+          onPress={() => navigation.navigate('Category', {
+            categoryId: item.id,
+            categoryName: item.name,
+            colorIndex: index
+          })}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.categoryIconContainer, { backgroundColor: accentColor + '15' }]}>
+            <Text style={styles.categoryIcon}>{item.icon || '📁'}</Text>
+          </View>
+          <View style={styles.categoryInfo}>
+            <Text style={styles.categoryName}>{item.name}</Text>
+            <Text style={styles.categorySubtitle}>Appuyez pour voir les actions</Text>
+          </View>
+          <View style={[styles.categoryAccent, { backgroundColor: accentColor }]} />
+        </TouchableOpacity>
+      </SwipeableRow>
+    );
+  };
 
   if (loading) {
     return <Loading message="Chargement des categories..." />;
@@ -159,59 +186,111 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Mes Trackers</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowAddForm(!showAddForm)}
-          accessibilityLabel="Ajouter une categorie"
-          accessibilityRole="button"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      <StatusBar barStyle="light-content" />
 
-      <SearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Rechercher une categorie..."
-      />
-
-      {showAddForm && (
-        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
-          <TextInput
-            style={styles.input}
-            placeholder="Nom de la categorie (ex: Voiture)"
-            value={newCategoryName}
-            onChangeText={setNewCategoryName}
-            autoFocus
-          />
-          <TouchableOpacity style={styles.submitButton} onPress={handleAddCategory}>
-            <Text style={styles.submitButtonText}>Creer</Text>
+      {/* Header avec gradient */}
+      <LinearGradient
+        colors={gradients.night}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.greeting}>Bonjour !</Text>
+            <Text style={styles.title}>Mes Trackers</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddForm(!showAddForm)}
+            accessibilityLabel="Ajouter une categorie"
+            accessibilityRole="button"
+          >
+            <LinearGradient
+              colors={gradients.primary}
+              style={styles.addButtonGradient}
+            >
+              <Text style={styles.addButtonText}>+</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      )}
 
-      <InlineHint
-        visible={showGestureHint && categories.length > 0}
-        message="Glissez vers la gauche pour modifier ou supprimer"
-      />
+        {/* Stats rapides */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{categories.length}</Text>
+            <Text style={styles.statLabel}>Categories</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>∞</Text>
+            <Text style={styles.statLabel}>Possibilites</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
-        <FlatList
-          data={filteredCategories}
-          renderItem={renderCategory}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {searchQuery
-                ? 'Aucune categorie trouvee'
-                : 'Aucune categorie. Creez-en une pour commencer !'}
-            </Text>
-          }
+      {/* Contenu principal */}
+      <View style={styles.content}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Rechercher une categorie..."
         />
-      </Pressable>
+
+        {showAddForm && (
+          <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+            <Text style={styles.addFormTitle}>Nouvelle categorie</Text>
+            <Input
+              placeholder="Nom de la categorie (ex: Voiture)"
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              autoFocus
+            />
+            <View style={styles.addFormButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowAddForm(false)}
+              >
+                <Text style={styles.cancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <View style={styles.buttonSpacer} />
+              <GradientButton
+                title="Creer"
+                onPress={handleAddCategory}
+                style={styles.createButton}
+              />
+            </View>
+          </View>
+        )}
+
+        <InlineHint
+          visible={showGestureHint && categories.length > 0}
+          message="Glissez vers la gauche pour modifier ou supprimer"
+        />
+
+        <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+          <FlatList
+            data={filteredCategories}
+            renderItem={renderCategory}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>📂</Text>
+                <Text style={styles.emptyTitle}>
+                  {searchQuery ? 'Aucun resultat' : 'Aucune categorie'}
+                </Text>
+                <Text style={styles.emptyText}>
+                  {searchQuery
+                    ? 'Essayez avec d\'autres termes'
+                    : 'Creez votre premiere categorie pour commencer a tracker !'}
+                </Text>
+              </View>
+            }
+          />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -221,87 +300,179 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  listContainer: {
-    flex: 1,
-  },
   header: {
+    paddingTop: spacing.huge + spacing.lg,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: borderRadius.xxl,
+    borderBottomRightRadius: borderRadius.xxl,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    alignItems: 'flex-start',
+  },
+  greeting: {
+    fontSize: typography.sizes.md,
+    color: colors.warmGray400,
+    marginBottom: spacing.xs,
   },
   title: {
     fontSize: typography.sizes.xxxl,
     fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
+    color: colors.textInverse,
   },
   addButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    borderRadius: touchTargets.minimum / 2,
-    backgroundColor: colors.primary,
+    ...shadows.primary,
+  },
+  addButtonGradient: {
+    width: touchTargets.large,
+    height: touchTargets.large,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
     color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
+    fontSize: typography.sizes.xxxl,
     fontWeight: typography.weights.regular,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xxl,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  statNumber: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  statLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginTop: spacing.xs,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  content: {
+    flex: 1,
+    marginTop: -spacing.md,
+  },
+  listContainer: {
+    flex: 1,
   },
   addForm: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: typography.sizes.md,
+    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    padding: spacing.xl,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
   },
-  submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+  addFormTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  addFormButtons: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  submitButtonText: {
-    color: colors.textInverse,
+  cancelButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  buttonSpacer: {
+    width: spacing.md,
+  },
+  createButton: {
+    flex: 1,
   },
   list: {
     padding: spacing.lg,
+    paddingTop: spacing.sm,
   },
   categoryCard: {
     backgroundColor: colors.surface,
-    padding: spacing.xl,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    borderLeftWidth: 4,
+    padding: spacing.lg,
+    overflow: 'hidden',
     ...shadows.md,
   },
-  categoryIcon: {
-    fontSize: 32,
+  categoryIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: spacing.lg,
+  },
+  categoryIcon: {
+    fontSize: 24,
+  },
+  categoryInfo: {
+    flex: 1,
   },
   categoryName: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
+  categorySubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  categoryAccent: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopRightRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.huge,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
   emptyText: {
-    textAlign: 'center',
-    color: colors.textSecondary,
     fontSize: typography.sizes.md,
-    marginTop: 40,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
