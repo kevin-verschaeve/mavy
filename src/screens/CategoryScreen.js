@@ -6,9 +6,11 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert
+  Alert,
+  Pressable
 } from 'react-native';
 import { actionService } from '../services/actionService';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 import { entryService } from '../services/entryService';
 import { actionFieldService } from '../services/actionFieldService';
 import ActionButton from '../components/ActionButton';
@@ -21,6 +23,8 @@ export default function CategoryScreen({ route, navigation }) {
   const [newActionName, setNewActionName] = useState('');
   const [isConfigurable, setIsConfigurable] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { handleOutsidePress, handleInsidePress } = useOutsideClick(showAddForm, setShowAddForm);
 
   useEffect(() => {
     loadActions();
@@ -211,7 +215,7 @@ export default function CategoryScreen({ route, navigation }) {
       </View>
 
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={handleInsidePress}>
           <TextInput
             style={styles.input}
             placeholder="Nom de l'action (ex: Révision voiture)"
@@ -233,17 +237,19 @@ export default function CategoryScreen({ route, navigation }) {
         </View>
       )}
 
-      <FlatList
-        data={actions}
-        renderItem={renderAction}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune action. Créez-en une pour commencer à tracker !
-          </Text>
-        }
-      />
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={actions}
+          renderItem={renderAction}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              Aucune action. Créez-en une pour commencer à tracker !
+            </Text>
+          }
+        />
+      </Pressable>
     </View>
   );
 }
@@ -252,6 +258,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

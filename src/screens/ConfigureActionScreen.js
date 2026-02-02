@@ -6,9 +6,11 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert
+  Alert,
+  Pressable
 } from 'react-native';
 import { actionFieldService } from '../services/actionFieldService';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 
 export default function ConfigureActionScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
@@ -16,6 +18,8 @@ export default function ConfigureActionScreen({ route, navigation }) {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('text');
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const { handleOutsidePress, handleInsidePress } = useOutsideClick(showAddForm, setShowAddForm);
 
   useEffect(() => {
     loadFields();
@@ -99,7 +103,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
       </View>
 
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={handleInsidePress}>
           <TextInput
             style={styles.input}
             placeholder="Nom du champ (ex: Prix, Kilomètres)"
@@ -133,17 +137,19 @@ export default function ConfigureActionScreen({ route, navigation }) {
         </View>
       )}
 
-      <FlatList
-        data={fields}
-        renderItem={renderField}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucun champ configuré. Ajoutez-en pour personnaliser cette action !
-          </Text>
-        }
-      />
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={fields}
+          renderItem={renderField}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              Aucun champ configuré. Ajoutez-en pour personnaliser cette action !
+            </Text>
+          }
+        />
+      </Pressable>
 
       <TouchableOpacity
         style={styles.doneButton}
@@ -159,6 +165,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

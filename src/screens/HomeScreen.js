@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
   TextInput,
-  Alert 
+  Alert,
+  Pressable
 } from 'react-native';
 import { categoryService } from '../services/categoryService';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+
+  const { handleOutsidePress, handleInsidePress } = useOutsideClick(showAddForm, setShowAddForm);
 
   useEffect(() => {
     loadCategories();
@@ -161,7 +165,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={handleInsidePress}>
           <TextInput
             style={styles.input}
             placeholder="Nom de la catégorie (ex: Voiture)"
@@ -174,17 +178,19 @@ export default function HomeScreen({ navigation }) {
         </View>
       )}
 
-      <FlatList
-        data={categories}
-        renderItem={renderCategory}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune catégorie. Créez-en une pour commencer !
-          </Text>
-        }
-      />
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={categories}
+          renderItem={renderCategory}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              Aucune catégorie. Créez-en une pour commencer !
+            </Text>
+          }
+        />
+      </Pressable>
     </View>
   );
 }
@@ -193,6 +199,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
