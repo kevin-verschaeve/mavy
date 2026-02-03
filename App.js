@@ -4,6 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
 import { initDatabase } from './src/config/turso';
+import { ToastProvider } from './src/components/Toast';
+import { colors, spacing, typography } from './src/constants/theme';
 import HomeScreen from './src/screens/HomeScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
 import ActionHistoryScreen from './src/screens/ActionHistoryScreen';
@@ -13,7 +15,6 @@ import EditEntryScreen from './src/screens/EditEntryScreen';
 
 const Stack = createNativeStackNavigator();
 
-// Stack pour la navigation Home -> Category -> ActionHistory / ConfigureAction / AddEntry
 function HomeStack() {
   return (
     <Stack.Navigator>
@@ -25,42 +26,27 @@ function HomeStack() {
       <Stack.Screen
         name="Category"
         component={CategoryScreen}
-        options={({ route }) => ({
-          title: route.params?.categoryName || 'Catégorie',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ActionHistory"
         component={ActionHistoryScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Historique',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ConfigureAction"
         component={ConfigureActionScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Configuration',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AddEntry"
         component={AddEntryScreen}
-        options={({ route }) => ({
-          title: route.params?.action?.name || 'Nouvelle entrée',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="EditEntry"
         component={EditEntryScreen}
-        options={({ route }) => ({
-          title: route.params?.actionName || 'Modifier l\'entrée',
-          headerBackTitle: 'Retour'
-        })}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -73,7 +59,6 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Initialiser la base de données
         const success = await initDatabase();
         if (!success) {
           setError('Impossible d\'initialiser la base de données');
@@ -92,7 +77,7 @@ export default function App() {
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
@@ -101,7 +86,7 @@ export default function App() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>⚠️ Erreur</Text>
+        <Text style={styles.errorTitle}>Erreur</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.errorHint}>
           Vérifiez votre configuration Turso dans src/config/turso.js
@@ -111,12 +96,11 @@ export default function App() {
   }
 
   return (
-    <>
+    <ToastProvider>
       <NavigationContainer>
         <HomeStack />
       </NavigationContainer>
-      <Toast />
-    </>
+    </ToastProvider>
   );
 }
 
@@ -125,35 +109,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6b7280',
+    marginTop: spacing.lg,
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
   },
   errorTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#ef4444',
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    marginBottom: spacing.md,
+    color: colors.danger,
   },
   errorText: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   errorHint: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: typography.sizes.sm,
+    color: colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
   },

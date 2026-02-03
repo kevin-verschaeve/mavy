@@ -10,15 +10,20 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
 import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
+import { useToast } from '../components/Toast';
+import Loading from '../components/Loading';
+import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
 export default function EditEntryScreen({ route, navigation }) {
   const { entry, actionId, actionName } = route.params;
   const [fields, setFields] = useState([]);
   const [fieldValues, setFieldValues] = useState({});
   const [loading, setLoading] = useState(true);
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadFields();
@@ -65,13 +70,7 @@ export default function EditEntryScreen({ route, navigation }) {
 
     try {
       await entryService.updateFieldValues(entry.id, fieldValues);
-      Toast.show({
-        type: 'success',
-        text1: '✅ Modifié !',
-        text2: 'Les champs ont été modifiés avec succès',
-        position: 'top',
-        visibilityTime: 2000
-      });
+      showToast('Modifications enregistrées');
       navigation.goBack();
     } catch (error) {
       Toast.show({
@@ -85,11 +84,7 @@ export default function EditEntryScreen({ route, navigation }) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
-      </View>
-    );
+    return <Loading message="Chargement des champs..." />;
   }
 
   return (
@@ -97,20 +92,42 @@ export default function EditEntryScreen({ route, navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Modifier l'entrée</Text>
-          <Text style={styles.subtitle}>{actionName}</Text>
+      {/* Header avec dégradé */}
+      <LinearGradient
+        colors={gradients.night}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerSubtitle}>Modifier l'entrée</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
+          </View>
         </View>
+      </LinearGradient>
 
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.form}>
-          {fields.map(field => (
+          {fields.map((field) => (
             <View key={field.id} style={styles.fieldGroup}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>{field.field_name}</Text>
-                <Text style={styles.fieldTypeBadge}>
-                  {field.field_type === 'number' ? '123' : 'abc'}
-                </Text>
+                <View style={[
+                  styles.fieldTypeBadge,
+                  { backgroundColor: field.field_type === 'number' ? colors.accent + '20' : colors.primary + '20' }
+                ]}>
+                  <Text style={[
+                    styles.fieldTypeBadgeText,
+                    { color: field.field_type === 'number' ? colors.accent : colors.primary }
+                  ]}>
+                    {field.field_type === 'number' ? '123' : 'ABC'}
+                  </Text>
+                </View>
               </View>
               <TextInput
                 style={styles.input}
@@ -119,6 +136,7 @@ export default function EditEntryScreen({ route, navigation }) {
                   setFieldValues({ ...fieldValues, [field.field_name]: value })
                 }
                 placeholder={`Entrez ${field.field_name.toLowerCase()}`}
+                placeholderTextColor={colors.textMuted}
                 keyboardType={field.field_type === 'number' ? 'numeric' : 'default'}
               />
             </View>
@@ -126,9 +144,19 @@ export default function EditEntryScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Enregistrer les modifications</Text>
-      </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.cancelButtonText}>Annuler</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <LinearGradient colors={gradients.forest} style={styles.submitButtonGradient}>
+            <Text style={styles.submitButtonText}>Enregistrer</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -136,71 +164,119 @@ export default function EditEntryScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  header: {
+    paddingTop: spacing.huge,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  backButtonText: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginBottom: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
   },
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 4,
+  scrollContent: {
+    padding: spacing.lg,
   },
   form: {
-    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    ...shadows.md,
   },
   fieldGroup: {
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
   },
   fieldTypeBadge: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#6b7280',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  fieldTypeBadgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
   },
   input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    backgroundColor: colors.warmGray50,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+  },
+  footer: {
+    flexDirection: 'row',
+    padding: spacing.lg,
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    backgroundColor: colors.warmGray100,
+  },
+  cancelButtonText: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
   },
   submitButton: {
-    backgroundColor: '#10b981',
-    padding: 16,
-    margin: 16,
-    borderRadius: 12,
+    flex: 2,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  submitButtonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
   },
 });

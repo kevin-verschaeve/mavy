@@ -14,7 +14,7 @@ export const categoryService = {
   },
 
   // Créer une nouvelle catégorie
-  async create(name, icon = '📌', color = '#3b82f6') {
+  async create(name, icon = null, color = null) {
     const db = getTursoClient();
     try {
       const result = await db.execute({

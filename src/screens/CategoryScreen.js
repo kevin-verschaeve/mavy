@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,33 +6,49 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert
+  Alert,
+  Pressable
 } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
-import { actionFieldService } from '../services/actionFieldService';
 import ActionButton from '../components/ActionButton';
+import { useToast } from '../components/Toast';
+import Loading from '../components/Loading';
+import SearchBar from '../components/SearchBar';
+import { InlineHint } from '../components/GestureHint';
+import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows, categoryColors } from '../constants/theme';
 
 export default function CategoryScreen({ route, navigation }) {
-  const { categoryId, categoryName } = route.params;
+  const { categoryId, categoryName, colorIndex = 0 } = route.params;
   const [actions, setActions] = useState([]);
   const [lastEntries, setLastEntries] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [newActionName, setNewActionName] = useState('');
   const [isConfigurable, setIsConfigurable] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showGestureHint, setShowGestureHint] = useState(true);
+
+  const { showToast } = useToast();
+  const categoryColor = categoryColors[colorIndex % categoryColors.length];
 
   useEffect(() => {
     loadActions();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadActions();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const loadActions = async () => {
     try {
       const data = await actionService.getByCategory(categoryId);
       setActions(data);
-      
-      // Charger la dernière entrée pour chaque action
+
       const entries = {};
       for (const action of data) {
         const lastEntry = await entryService.getLastEntry(action.id);
@@ -45,6 +61,14 @@ export default function CategoryScreen({ route, navigation }) {
       setLoading(false);
     }
   };
+
+  const filteredActions = useMemo(() => {
+    if (!searchQuery.trim()) return actions;
+    const query = searchQuery.toLowerCase();
+    return actions.filter(action =>
+      action.name.toLowerCase().includes(query)
+    );
+  }, [actions, searchQuery]);
 
   const handleAddAction = async () => {
     if (!newActionName.trim()) {
@@ -59,39 +83,26 @@ export default function CategoryScreen({ route, navigation }) {
       setIsConfigurable(false);
       setShowAddForm(false);
 
-      // Si l'action est configurable, naviguer vers l'écran de configuration
       if (isConfigurable) {
-        navigation.navigate('ConfigureAction', {
-          actionId,
-          actionName
-        });
+        navigation.navigate('ConfigureAction', { actionId, actionName });
       }
 
       loadActions();
+      showToast('Action créée');
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de créer l\'action');
     }
   };
 
   const handleActionPress = async (action) => {
-    // Si l'action est configurable, naviguer vers le formulaire de saisie
     if (action.is_configurable === 1) {
-      navigation.navigate('AddEntry', {
-        action
-      });
+      navigation.navigate('AddEntry', { action });
       return;
     }
 
-    // Sinon, créer l'entrée directement
     try {
       await entryService.create(action.id);
-      Toast.show({
-        type: 'success',
-        text1: '✅ Enregistré !',
-        text2: `"${action.name}" a été enregistré avec succès`,
-        position: 'top',
-        visibilityTime: 2000
-      });
+      showToast(`"${action.name}" enregistre`);
       loadActions();
     } catch (error) {
       Toast.show({
@@ -116,19 +127,9 @@ export default function CategoryScreen({ route, navigation }) {
       'Options',
       `Que voulez-vous faire avec "${action.name}" ?`,
       [
-        {
-          text: 'Renommer',
-          onPress: () => handleRenameAction(action)
-        },
-        {
-          text: 'Supprimer',
-          onPress: () => handleDeleteAction(action),
-          style: 'destructive'
-        },
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        }
+        { text: 'Renommer', onPress: () => handleRenameAction(action) },
+        { text: 'Supprimer', onPress: () => handleDeleteAction(action), style: 'destructive' },
+        { text: 'Annuler', style: 'cancel' }
       ]
     );
   };
@@ -138,10 +139,7 @@ export default function CategoryScreen({ route, navigation }) {
       'Renommer l\'action',
       'Entrez le nouveau nom :',
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Renommer',
           onPress: async (newName) => {
@@ -152,7 +150,7 @@ export default function CategoryScreen({ route, navigation }) {
             try {
               await actionService.update(action.id, newName.trim());
               loadActions();
-              Alert.alert('✅ Succès', 'Action renommée');
+              showToast('Action renommée');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de renommer l\'action');
             }
@@ -167,19 +165,16 @@ export default function CategoryScreen({ route, navigation }) {
   const handleDeleteAction = (action) => {
     Alert.alert(
       'Confirmer la suppression',
-      `Êtes-vous sûr de vouloir supprimer "${action.name}" et toutes ses entrées ?`,
+      `Supprimer "${action.name}" et toutes ses entrées ?`,
       [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           onPress: async () => {
             try {
               await actionService.delete(action.id);
               loadActions();
-              Alert.alert('✅ Succès', 'Action supprimée');
+              showToast('Action supprimée');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer l\'action');
             }
@@ -188,6 +183,15 @@ export default function CategoryScreen({ route, navigation }) {
         }
       ]
     );
+  };
+
+  const handleOutsidePress = () => {
+    if (showAddForm) {
+      setShowAddForm(false);
+    }
+    if (showGestureHint) {
+      setShowGestureHint(false);
+    }
   };
 
   const renderAction = ({ item }) => (
@@ -201,59 +205,110 @@ export default function CategoryScreen({ route, navigation }) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
-      </View>
-    );
+    return <Loading message="Chargement des actions..." />;
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{categoryName}</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowAddForm(!showAddForm)}
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Header avec dégradé */}
+      <LinearGradient
+        colors={gradients.night}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title} numberOfLines={1}>{categoryName}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{actions.length}</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddForm(!showAddForm)}
+            accessibilityLabel="Ajouter une action"
+            accessibilityRole="button"
+          >
+            <LinearGradient colors={gradients.primary} style={styles.addButtonGradient}>
+              <Text style={styles.addButtonText}>{showAddForm ? '×' : '+'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Rechercher une action..."
+      />
 
       {showAddForm && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+          <Text style={styles.formTitle}>Nouvelle action</Text>
           <TextInput
             style={styles.input}
             placeholder="Nom de l'action (ex: Révision voiture)"
+            placeholderTextColor={colors.textMuted}
             value={newActionName}
             onChangeText={setNewActionName}
+            autoFocus
           />
           <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() => setIsConfigurable(!isConfigurable)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isConfigurable }}
           >
             <View style={[styles.checkbox, isConfigurable && styles.checkboxChecked]}>
               {isConfigurable && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={styles.checkboxLabel}>Configurable ?</Text>
+            <Text style={styles.checkboxLabel}>Configurable (avec champs personnalisés)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.submitButton} onPress={handleAddAction}>
-            <Text style={styles.submitButtonText}>Créer</Text>
+            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+              <Text style={styles.submitButtonText}>Créer</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       )}
 
-      <FlatList
-        data={actions}
-        renderItem={renderAction}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Aucune action. Créez-en une pour commencer à tracker !
-          </Text>
-        }
+      <InlineHint
+        visible={showGestureHint && actions.length > 0}
+        message="Appui long sur une action pour plus d'options"
       />
+
+      <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
+        <FlatList
+          data={filteredActions}
+          renderItem={renderAction}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIcon, { backgroundColor: categoryColor + '20' }]}>
+                <Text style={[styles.emptyIconText, { color: categoryColor }]}>📋</Text>
+              </View>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? 'Aucune action trouvée'
+                  : 'Aucune action dans cette catégorie'}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {searchQuery
+                  ? 'Essayez avec d\'autres termes'
+                  : 'Appuyez sur + pour en créer une'}
+              </Text>
+            </View>
+          }
+        />
+      </Pressable>
     </View>
   );
 }
@@ -261,96 +316,207 @@ export default function CategoryScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  listContainer: {
+    flex: 1,
   },
   header: {
+    paddingTop: spacing.huge,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  backButton: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  backButtonText: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  categoryDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.sm,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  badgeText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#3b82f6',
+    borderRadius: touchTargets.minimum / 2,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  addButtonGradient: {
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '300',
+    color: colors.textInverse,
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.medium,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  statLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.warmGray400,
+    marginTop: spacing.xs,
+  },
+  statDivider: {
+    width: 3,
+    height: 30,
+    borderRadius: 2,
+    marginHorizontal: spacing.lg,
   },
   addForm: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.md,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+  },
+  formTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    fontSize: typography.sizes.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.warmGray50,
+    color: colors.textPrimary,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.lg,
+    minHeight: touchTargets.minimum,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
+    borderColor: colors.warmGray300,
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   checkboxChecked: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkmark: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
   },
   checkboxLabel: {
-    fontSize: 16,
-    color: '#1f2937',
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    flex: 1,
   },
   submitButton: {
-    backgroundColor: '#3b82f6',
-    padding: 12,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primary,
+  },
+  submitButtonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
   },
   list: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.huge,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIconText: {
+    fontSize: 36,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#6b7280',
-    fontSize: 16,
-    marginTop: 40,
-    paddingHorizontal: 20,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: typography.sizes.md,
   },
 });

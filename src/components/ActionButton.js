@@ -1,44 +1,51 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { formatRelativeDate } from '../utils/dateUtils';
+import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function ActionButton({ action, onPress, onHistoryPress, onLongPress, lastEntry }) {
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Jamais';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Aujourd\'hui';
-    if (diffDays === 1) return 'Hier';
-    if (diffDays < 7) return `Il y a ${diffDays} jours`;
-    if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} semaines`;
-    if (diffDays < 365) return `Il y a ${Math.floor(diffDays / 30)} mois`;
-    return `Il y a ${Math.floor(diffDays / 365)} ans`;
-  };
-
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={styles.button}
+        style={styles.buttonWrapper}
         onPress={onPress}
         onLongPress={onLongPress}
-        activeOpacity={0.7}
+        activeOpacity={0.85}
+        accessibilityLabel={`Action ${action.name}`}
+        accessibilityRole="button"
+        accessibilityHint="Appui long pour plus d'options"
       >
-        <View style={styles.content}>
-          <Text style={styles.actionName}>{action.name}</Text>
-          <Text style={styles.lastDate}>
-            Dernière fois: {formatDate(lastEntry?.created_at)}
-          </Text>
-        </View>
+        <LinearGradient
+          colors={gradients.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.button}
+        >
+          <View style={styles.content}>
+            <Text style={styles.actionName} numberOfLines={1}>{action.name}</Text>
+            <View style={styles.lastDateContainer}>
+              <Text style={styles.clockIcon}>🕐</Text>
+              <Text style={styles.lastDate}>
+                {formatRelativeDate(lastEntry?.created_at)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.tapIndicator}>
+            <Text style={styles.tapIcon}>▶</Text>
+          </View>
+        </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.historyButton}
         onPress={onHistoryPress}
         activeOpacity={0.7}
+        accessibilityLabel={`Historique de ${action.name}`}
+        accessibilityRole="button"
       >
-        <Text style={styles.historyIcon}>📋</Text>
+        <Text style={styles.historyIcon}>📊</Text>
+        <Text style={styles.historyLabel}>Histo.</Text>
       </TouchableOpacity>
     </View>
   );
@@ -47,48 +54,72 @@ export default function ActionButton({ action, onPress, onHistoryPress, onLongPr
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginVertical: 6,
-    marginHorizontal: 16,
-    gap: 8,
+    marginVertical: spacing.sm,
+    marginHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  buttonWrapper: {
+    flex: 1,
+    ...shadows.primary,
   },
   button: {
-    flex: 1,
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    minHeight: touchTargets.xlarge,
   },
   content: {
-    flexDirection: 'column',
+    flex: 1,
   },
   actionName: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
+    color: colors.textInverse,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    marginBottom: spacing.sm,
+  },
+  lastDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clockIcon: {
+    fontSize: typography.sizes.xs,
+    marginRight: spacing.xs,
   },
   lastDate: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: typography.sizes.sm,
   },
-  historyButton: {
-    backgroundColor: '#6b7280',
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+  tapIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginLeft: spacing.md,
+  },
+  tapIcon: {
+    color: colors.textInverse,
+    fontSize: typography.sizes.sm,
+  },
+  historyButton: {
+    backgroundColor: colors.surface,
+    width: touchTargets.xlarge,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    ...shadows.md,
   },
   historyIcon: {
-    fontSize: 24,
+    fontSize: typography.sizes.xl,
+    marginBottom: spacing.xs,
+  },
+  historyLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
   },
 });
