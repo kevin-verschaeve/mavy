@@ -10,6 +10,7 @@ import {
   Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
@@ -206,7 +207,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerSubtitle}>Historique</Text>
@@ -240,9 +241,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIcon}>
-              <Text style={styles.emptyIconText}>📭</Text>
-            </View>
+            <Ionicons name="file-tray-outline" size={64} color={colors.textMuted} />
             <Text style={styles.emptyText}>Aucune entrée</Text>
             <Text style={styles.emptySubtext}>
               L'historique apparaîtra ici
@@ -253,23 +252,25 @@ export default function ActionHistoryScreen({ route, navigation }) {
       />
 
       {showDatePicker && Platform.OS === 'ios' && (
-        <View style={styles.datePickerContainer}>
-          <View style={styles.datePickerHeader}>
-            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-              <Text style={styles.datePickerCancel}>Annuler</Text>
-            </TouchableOpacity>
-            <Text style={styles.datePickerTitle}>Modifier la date</Text>
-            <TouchableOpacity onPress={() => confirmDateChange(tempDate)}>
-              <Text style={styles.datePickerConfirm}>Confirmer</Text>
-            </TouchableOpacity>
+        <Pressable style={styles.overlay} onPress={() => setShowDatePicker(false)}>
+          <View style={styles.datePickerContainer}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.datePickerCancel}>Annuler</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>Modifier la date</Text>
+              <TouchableOpacity onPress={() => confirmDateChange(tempDate)}>
+                <Text style={styles.datePickerConfirm}>Confirmer</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+            />
           </View>
-          <DateTimePicker
-            value={tempDate}
-            mode="date"
-            display="spinner"
-            onChange={handleDateChange}
-          />
-        </View>
+        </Pressable>
       )}
 
       {Platform.OS === 'android' && showDatePicker && (
@@ -304,11 +305,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.sm,
-  },
-  backButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
   },
   headerTextContainer: {
     flex: 1,
@@ -404,18 +400,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.huge,
     paddingHorizontal: spacing.xl,
   },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.warmGray100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  emptyIconText: {
-    fontSize: 36,
-  },
   emptyText: {
     textAlign: 'center',
     color: colors.textPrimary,
@@ -428,11 +412,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: typography.sizes.md,
   },
-  datePickerContainer: {
+  overlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+  },
+  datePickerContainer: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xxl,
     borderTopRightRadius: borderRadius.xxl,

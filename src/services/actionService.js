@@ -1,13 +1,25 @@
 import { getTursoClient } from '../config/turso';
+import { getCurrentUserId } from './userService';
 
 export const actionService = {
-  // Récupérer toutes les actions d'une catégorie
+  // Récupérer toutes les actions d'une catégorie (filtrées par user_id via la catégorie)
   async getByCategory(categoryId) {
     const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
     try {
       const result = await db.execute({
-        sql: 'SELECT * FROM actions WHERE category_id = ? ORDER BY name',
-        args: [categoryId]
+        sql: `
+          SELECT a.* FROM actions a
+          JOIN categories c ON a.category_id = c.id
+          WHERE a.category_id = ? AND c.user_id = ?
+          ORDER BY a.name
+        `,
+        args: [categoryId, userId]
       });
       return result.rows;
     } catch (error) {
@@ -16,10 +28,26 @@ export const actionService = {
     }
   },
 
-  // Créer une nouvelle action
+  // Créer une nouvelle action (la catégorie doit appartenir à l'utilisateur)
   async create(categoryId, name, isConfigurable = false) {
     const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
     try {
+      // Vérifier que la catégorie appartient à l'utilisateur
+      const categoryCheck = await db.execute({
+        sql: 'SELECT id FROM categories WHERE id = ? AND user_id = ?',
+        args: [categoryId, userId]
+      });
+
+      if (categoryCheck.rows.length === 0) {
+        throw new Error('Catégorie non trouvée ou accès non autorisé');
+      }
+
       const result = await db.execute({
         sql: 'INSERT INTO actions (category_id, name, is_configurable) VALUES (?, ?, ?)',
         args: [categoryId, name, isConfigurable ? 1 : 0]
@@ -31,13 +59,23 @@ export const actionService = {
     }
   },
 
-  // Récupérer une action par ID
+  // Récupérer une action par ID (filtrée par user_id)
   async getById(id) {
     const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
     try {
       const result = await db.execute({
-        sql: 'SELECT * FROM actions WHERE id = ?',
-        args: [id]
+        sql: `
+          SELECT a.* FROM actions a
+          JOIN categories c ON a.category_id = c.id
+          WHERE a.id = ? AND c.user_id = ?
+        `,
+        args: [id, userId]
       });
       return result.rows[0] || null;
     } catch (error) {
@@ -46,13 +84,25 @@ export const actionService = {
     }
   },
 
-  // Mettre à jour une action
+  // Mettre à jour une action (seulement si elle appartient à l'utilisateur via sa catégorie)
   async update(id, name) {
     const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
     try {
       await db.execute({
-        sql: 'UPDATE actions SET name = ? WHERE id = ?',
-        args: [name, id]
+        sql: `
+          UPDATE actions
+          SET name = ?
+          WHERE id = ? AND category_id IN (
+            SELECT id FROM categories WHERE user_id = ?
+          )
+        `,
+        args: [name, id, userId]
       });
       return true;
     } catch (error) {
@@ -61,13 +111,24 @@ export const actionService = {
     }
   },
 
-  // Supprimer une action
+  // Supprimer une action (seulement si elle appartient à l'utilisateur via sa catégorie)
   async delete(id) {
     const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
     try {
       await db.execute({
-        sql: 'DELETE FROM actions WHERE id = ?',
-        args: [id]
+        sql: `
+          DELETE FROM actions
+          WHERE id = ? AND category_id IN (
+            SELECT id FROM categories WHERE user_id = ?
+          )
+        `,
+        args: [id, userId]
       });
       return true;
     } catch (error) {

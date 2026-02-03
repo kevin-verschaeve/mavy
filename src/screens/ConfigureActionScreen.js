@@ -10,6 +10,7 @@ import {
   Pressable
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
 import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
@@ -168,14 +169,14 @@ export default function ConfigureActionScreen({ route, navigation }) {
             onPress={() => handleEditField(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.iconButtonText}>✏️</Text>
+            <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.iconButton, styles.deleteIconButton]}
             onPress={() => handleDeleteField(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.iconButtonText}>🗑️</Text>
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -194,11 +195,16 @@ export default function ConfigureActionScreen({ route, navigation }) {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerSubtitle}>Configuration</Text>
-            <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{fields.length}</Text>
+              </View>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.addButton}
@@ -211,54 +217,48 @@ export default function ConfigureActionScreen({ route, navigation }) {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        {/* Compteur de champs */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{fields.length}</Text>
-            <Text style={styles.statLabel}>champs configurés</Text>
-          </View>
-        </View>
       </LinearGradient>
 
       {showAddForm && (
-        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
-          <Text style={styles.formTitle}>{editingField ? 'Modifier le champ' : 'Nouveau champ'}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nom du champ (ex: Prix, Kilomètres)"
-            placeholderTextColor={colors.textMuted}
-            value={newFieldName}
-            onChangeText={setNewFieldName}
-            autoFocus
-          />
+        <Pressable style={styles.overlay} onPress={handleOutsidePress}>
+          <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+            <Text style={styles.formTitle}>{editingField ? 'Modifier le champ' : 'Nouveau champ'}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nom du champ (ex: Prix, Kilomètres)"
+              placeholderTextColor={colors.textMuted}
+              value={newFieldName}
+              onChangeText={setNewFieldName}
+              autoFocus
+            />
 
-          <Text style={styles.typeLabel}>Type de champ</Text>
-          <View style={styles.typeSelector}>
-            <TouchableOpacity
-              style={[styles.typeButton, newFieldType === 'text' && styles.typeButtonSelected]}
-              onPress={() => setNewFieldType('text')}
-            >
-              <Text style={[styles.typeButtonText, newFieldType === 'text' && styles.typeButtonTextSelected]}>
-                ABC Texte
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.typeButton, newFieldType === 'number' && styles.typeButtonSelected]}
-              onPress={() => setNewFieldType('number')}
-            >
-              <Text style={[styles.typeButtonText, newFieldType === 'number' && styles.typeButtonTextSelected]}>
-                123 Nombre
-              </Text>
+            <Text style={styles.typeLabel}>Type de champ</Text>
+            <View style={styles.typeSelector}>
+              <TouchableOpacity
+                style={[styles.typeButton, newFieldType === 'text' && styles.typeButtonSelected]}
+                onPress={() => setNewFieldType('text')}
+              >
+                <Text style={[styles.typeButtonText, newFieldType === 'text' && styles.typeButtonTextSelected]}>
+                  ABC Texte
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.typeButton, newFieldType === 'number' && styles.typeButtonSelected]}
+                onPress={() => setNewFieldType('number')}
+              >
+                <Text style={[styles.typeButtonText, newFieldType === 'number' && styles.typeButtonTextSelected]}>
+                  123 Nombre
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.submitButton} onPress={handleAddField}>
+              <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+                <Text style={styles.submitButtonText}>{editingField ? 'Modifier' : 'Ajouter'}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.submitButton} onPress={handleAddField}>
-            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
-              <Text style={styles.submitButtonText}>{editingField ? 'Modifier' : 'Ajouter'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        </Pressable>
       )}
 
       <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
@@ -269,9 +269,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIcon}>
-                <Text style={styles.emptyIconText}>⚙️</Text>
-              </View>
+              <Ionicons name="settings-outline" size={64} color={colors.textMuted} />
               <Text style={styles.emptyText}>Aucun champ configuré</Text>
               <Text style={styles.emptySubtext}>
                 Ajoutez des champs pour personnaliser cette action
@@ -334,11 +332,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: spacing.sm,
   },
-  backButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
-  },
   headerTextContainer: {
     flex: 1,
   },
@@ -347,8 +340,24 @@ const styles = StyleSheet.create({
     color: colors.warmGray400,
     marginBottom: spacing.xs,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textInverse,
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  badgeText: {
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
     color: colors.textInverse,
   },
@@ -368,32 +377,21 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.medium,
   },
-  statsContainer: {
-    marginTop: spacing.lg,
-  },
-  statCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.xxl,
-  },
-  statValue: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  statLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginTop: spacing.xs,
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-start',
+    paddingTop: spacing.huge + spacing.xxl,
+    zIndex: 1000,
   },
   addForm: {
     backgroundColor: colors.surface,
     padding: spacing.xl,
     marginHorizontal: spacing.lg,
-    marginTop: -spacing.md,
     borderRadius: borderRadius.xl,
     ...shadows.lg,
   },
@@ -468,11 +466,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
     borderRadius: borderRadius.xl,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     marginBottom: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...shadows.sm,
+    ...shadows.md,
   },
   fieldInfo: {
     flexDirection: 'row',
@@ -510,25 +510,10 @@ const styles = StyleSheet.create({
   deleteIconButton: {
     backgroundColor: colors.danger + '15',
   },
-  iconButtonText: {
-    fontSize: typography.sizes.lg,
-  },
   emptyContainer: {
     alignItems: 'center',
     paddingTop: spacing.huge,
     paddingHorizontal: spacing.xl,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.warmGray100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  emptyIconText: {
-    fontSize: 36,
   },
   emptyText: {
     textAlign: 'center',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, borderRadius, shadows } from '../constants/theme';
 
 export default function SearchBar({ value, onChangeText, placeholder = 'Rechercher...' }) {
   const handleClear = () => {
@@ -10,7 +11,7 @@ export default function SearchBar({ value, onChangeText, placeholder = 'Recherch
   return (
     <View style={styles.container}>
       <View style={styles.searchIcon}>
-        <Text style={styles.iconText}>🔍</Text>
+        <Ionicons name="search" size={18} color={colors.textMuted} />
       </View>
       <TextInput
         style={styles.input}
@@ -21,7 +22,7 @@ export default function SearchBar({ value, onChangeText, placeholder = 'Recherch
       />
       {value.length > 0 && (
         <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-          <Text style={styles.clearText}>×</Text>
+          <Ionicons name="close-circle" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       )}
     </View>
@@ -32,17 +33,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.warmGray100,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    ...shadows.sm,
   },
   searchIcon: {
     marginRight: spacing.sm,
-  },
-  iconText: {
-    fontSize: typography.sizes.md,
   },
   input: {
     flex: 1,
@@ -52,10 +53,5 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: spacing.xs,
-  },
-  clearText: {
-    fontSize: typography.sizes.xl,
-    color: colors.textMuted,
-    fontWeight: typography.weights.bold,
   },
 });

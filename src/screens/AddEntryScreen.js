@@ -11,6 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
@@ -92,7 +93,7 @@ export default function AddEntryScreen({ route, navigation }) {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerSubtitle}>Nouvelle entrée</Text>
@@ -175,11 +176,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.sm,
-  },
-  backButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
   },
   headerTextContainer: {
     flex: 1,

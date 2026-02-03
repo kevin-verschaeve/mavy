@@ -8,10 +8,11 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, touchTargets, gradients, borderRadius } from '../constants/theme';
 
 const SWIPE_THRESHOLD = 80;
-const DELETE_BUTTON_WIDTH = 90;
+const DELETE_BUTTON_WIDTH = 70;
 
 export default function SwipeableRow({ children, onDelete, onEdit }) {
   const translateX = useRef(new Animated.Value(0)).current;
@@ -23,13 +24,13 @@ export default function SwipeableRow({ children, onDelete, onEdit }) {
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dx < 0) {
-          const maxSwipe = onEdit ? -DELETE_BUTTON_WIDTH * 2 : -DELETE_BUTTON_WIDTH;
+          const maxSwipe = onEdit ? -(DELETE_BUTTON_WIDTH * 2 + 15) : -(DELETE_BUTTON_WIDTH + 12);
           translateX.setValue(Math.max(gestureState.dx, maxSwipe));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -SWIPE_THRESHOLD) {
-          const targetX = onEdit ? -DELETE_BUTTON_WIDTH * 2 : -DELETE_BUTTON_WIDTH;
+          const targetX = onEdit ? -(DELETE_BUTTON_WIDTH * 2 + 15) : -(DELETE_BUTTON_WIDTH + 12);
           Animated.spring(translateX, {
             toValue: targetX,
             useNativeDriver: true,
@@ -77,7 +78,7 @@ export default function SwipeableRow({ children, onDelete, onEdit }) {
               colors={gradients.ocean}
               style={styles.actionButtonGradient}
             >
-              <Text style={styles.actionText}>Modifier</Text>
+              <Ionicons name="create-outline" size={24} color={colors.textInverse} />
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -90,7 +91,7 @@ export default function SwipeableRow({ children, onDelete, onEdit }) {
             colors={['#f43f5e', '#dc2626']}
             style={styles.actionButtonGradient}
           >
-            <Text style={styles.actionText}>Supprimer</Text>
+            <Ionicons name="trash-outline" size={24} color={colors.textInverse} />
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -131,12 +132,6 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  actionText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
   },
   content: {
     backgroundColor: colors.surface,

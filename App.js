@@ -4,8 +4,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
 import { initDatabase } from './src/config/turso';
+import { UserProvider, useUser } from './src/contexts/UserContext';
 import { ToastProvider } from './src/components/Toast';
 import { colors, spacing, typography } from './src/constants/theme';
+import ProfileSelectionScreen from './src/screens/ProfileSelectionScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
 import ActionHistoryScreen from './src/screens/ActionHistoryScreen';
@@ -52,9 +54,10 @@ function HomeStack() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
+  const { userId, isLoading, refreshUser } = useUser();
 
   useEffect(() => {
     async function prepare() {
@@ -74,7 +77,7 @@ export default function App() {
     prepare();
   }, []);
 
-  if (!isReady) {
+  if (!isReady || isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -95,12 +98,25 @@ export default function App() {
     );
   }
 
+  // Afficher l'écran de sélection de profil si aucun profil n'est sélectionné
+  if (!userId) {
+    return <ProfileSelectionScreen onProfileSelected={refreshUser} />;
+  }
+
   return (
-    <ToastProvider>
-      <NavigationContainer>
-        <HomeStack />
-      </NavigationContainer>
-    </ToastProvider>
+    <NavigationContainer>
+      <HomeStack />
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <UserProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </UserProvider>
   );
 }
 

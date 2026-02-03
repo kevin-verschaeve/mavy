@@ -10,7 +10,10 @@ import {
   StatusBar
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { categoryService } from '../services/categoryService';
+import { getCurrentUser, clearCurrentUser } from '../services/userService';
+import { useUser } from '../contexts/UserContext';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
@@ -39,12 +42,20 @@ export default function HomeScreen({ navigation }) {
   const [showGestureHint, setShowGestureHint] = useState(true);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [categoryToRename, setCategoryToRename] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const { showToast } = useToast();
+  const { refreshUser } = useUser();
 
   useEffect(() => {
     loadCategories();
+    loadCurrentUser();
   }, []);
+
+  const loadCurrentUser = async () => {
+    const user = await getCurrentUser();
+    setCurrentUser(user);
+  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -150,6 +161,24 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const handleChangeProfile = () => {
+    Alert.alert(
+      'Changer de profil',
+      'Voulez-vous vraiment changer de profil ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Changer',
+          onPress: async () => {
+            await clearCurrentUser();
+            // Rafraîchir le contexte utilisateur pour revenir à l'écran de sélection
+            await refreshUser();
+          }
+        }
+      ]
+    );
+  };
+
   const getCategoryColor = (index) => {
     return categoryColors[index % categoryColors.length];
   };
@@ -179,7 +208,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.categoryInfo}>
             <Text style={styles.categoryName}>{item.name}</Text>
           </View>
-          <Text style={styles.categoryArrow}>→</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </SwipeableRow>
     );
@@ -201,11 +230,23 @@ export default function HomeScreen({ navigation }) {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>Mes Trackers</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{categories.length}</Text>
+          <View style={styles.leftSection}>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>Catégories</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{categories.length}</Text>
+              </View>
             </View>
+            {currentUser && (
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={handleChangeProfile}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-circle-outline" size={16} color={colors.textInverse} />
+                <Text style={styles.profileButtonText}>{currentUser.name}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity
             style={styles.addButton}
@@ -217,7 +258,7 @@ export default function HomeScreen({ navigation }) {
               colors={gradients.primary}
               style={styles.addButtonGradient}
             >
-              <Text style={styles.addButtonText}>+</Text>
+              <Ionicons name="add" size={32} color={colors.textInverse} />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -232,29 +273,31 @@ export default function HomeScreen({ navigation }) {
         />
 
         {showAddForm && (
-          <View style={styles.addForm} onStartShouldSetResponder={() => true}>
-            <Text style={styles.addFormTitle}>Nouvelle catégorie</Text>
-            <Input
-              placeholder="Nom de la catégorie (ex: Voiture)"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              autoFocus
-            />
-            <View style={styles.addFormButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowAddForm(false)}
-              >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
-              </TouchableOpacity>
-              <View style={styles.buttonSpacer} />
-              <GradientButton
-                title="Créer"
-                onPress={handleAddCategory}
-                style={styles.createButton}
+          <Pressable style={styles.overlay} onPress={() => setShowAddForm(false)}>
+            <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+              <Text style={styles.addFormTitle}>Nouvelle catégorie</Text>
+              <Input
+                placeholder="Nom de la catégorie (ex: Voiture)"
+                value={newCategoryName}
+                onChangeText={setNewCategoryName}
+                autoFocus
               />
+              <View style={styles.addFormButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowAddForm(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Annuler</Text>
+                </TouchableOpacity>
+                <View style={styles.buttonSpacer} />
+                <GradientButton
+                  title="Créer"
+                  onPress={handleAddCategory}
+                  style={styles.createButton}
+                />
+              </View>
             </View>
-          </View>
+          </Pressable>
         )}
 
         <InlineHint
@@ -271,7 +314,7 @@ export default function HomeScreen({ navigation }) {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>📂</Text>
+                <Ionicons name="folder-open-outline" size={64} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>
                   {searchQuery ? 'Aucun résultat' : 'Aucune catégorie'}
                 </Text>
@@ -318,9 +361,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  leftSection: {
+    flex: 1,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: borderRadius.md,
+    alignSelf: 'flex-start',
+  },
+  profileButtonText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textInverse,
+    marginLeft: spacing.xs,
+    fontWeight: typography.weights.medium,
   },
   title: {
     fontSize: typography.sizes.xxxl,
@@ -349,10 +411,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.regular,
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-start',
+    paddingTop: spacing.huge + spacing.xxl,
+    zIndex: 1000,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -462,19 +530,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'left',
   },
-  categoryArrow: {
-    fontSize: typography.sizes.md,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
-  },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: spacing.huge,
     paddingHorizontal: spacing.xl,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
   },
   emptyTitle: {
     fontSize: typography.sizes.xl,

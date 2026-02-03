@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { formatRelativeDate } from '../utils/dateUtils';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
@@ -23,16 +24,23 @@ export default function ActionButton({ action, onPress, onHistoryPress, onLongPr
           style={styles.button}
         >
           <View style={styles.content}>
-            <Text style={styles.actionName} numberOfLines={1}>{action.name}</Text>
+            <View style={styles.actionNameRow}>
+              <Text style={styles.actionName} numberOfLines={1}>{action.name}</Text>
+              {action.is_configurable === 1 && (
+                <View style={styles.configurableBadge}>
+                  <Ionicons name="options-outline" size={16} color={colors.textInverse} />
+                </View>
+              )}
+            </View>
             <View style={styles.lastDateContainer}>
-              <Text style={styles.clockIcon}>🕐</Text>
+              <Ionicons name="time-outline" size={14} color="rgba(255, 255, 255, 0.85)" />
               <Text style={styles.lastDate}>
                 {formatRelativeDate(lastEntry?.created_at)}
               </Text>
             </View>
           </View>
           <View style={styles.tapIndicator}>
-            <Text style={styles.tapIcon}>▶</Text>
+            <Ionicons name="play" size={14} color={colors.textInverse} />
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -44,7 +52,7 @@ export default function ActionButton({ action, onPress, onHistoryPress, onLongPr
         accessibilityLabel={`Historique de ${action.name}`}
         accessibilityRole="button"
       >
-        <Text style={styles.historyIcon}>📊</Text>
+        <Ionicons name="stats-chart" size={24} color={colors.primary} />
         <Text style={styles.historyLabel}>Histo.</Text>
       </TouchableOpacity>
     </View>
@@ -73,19 +81,29 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  actionNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
   actionName: {
     color: colors.textInverse,
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  configurableBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: borderRadius.sm,
+    padding: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   lastDateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  clockIcon: {
-    fontSize: typography.sizes.xs,
-    marginRight: spacing.xs,
+    gap: spacing.xs,
   },
   lastDate: {
     color: 'rgba(255, 255, 255, 0.85)',
@@ -100,10 +118,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: spacing.md,
   },
-  tapIcon: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.sm,
-  },
   historyButton: {
     backgroundColor: colors.surface,
     width: touchTargets.xlarge,
@@ -111,11 +125,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: spacing.md,
+    gap: spacing.xs,
     ...shadows.md,
-  },
-  historyIcon: {
-    fontSize: typography.sizes.xl,
-    marginBottom: spacing.xs,
   },
   historyLabel: {
     fontSize: typography.sizes.xs,

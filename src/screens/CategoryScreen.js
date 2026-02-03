@@ -10,6 +10,7 @@ import {
   Pressable
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import ActionButton from '../components/ActionButton';
@@ -17,10 +18,10 @@ import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
 import { InlineHint } from '../components/GestureHint';
-import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows, categoryColors } from '../constants/theme';
+import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function CategoryScreen({ route, navigation }) {
-  const { categoryId, categoryName, colorIndex = 0 } = route.params;
+  const { categoryId, categoryName } = route.params;
   const [actions, setActions] = useState([]);
   const [lastEntries, setLastEntries] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
@@ -31,7 +32,6 @@ export default function CategoryScreen({ route, navigation }) {
   const [showGestureHint, setShowGestureHint] = useState(true);
 
   const { showToast } = useToast();
-  const categoryColor = categoryColors[colorIndex % categoryColors.length];
 
   useEffect(() => {
     loadActions();
@@ -221,7 +221,7 @@ export default function CategoryScreen({ route, navigation }) {
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Text style={styles.backButtonText}>←</Text>
+              <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
               <Text style={styles.title} numberOfLines={1}>{categoryName}</Text>
@@ -250,33 +250,35 @@ export default function CategoryScreen({ route, navigation }) {
       />
 
       {showAddForm && (
-        <View style={styles.addForm} onStartShouldSetResponder={() => true}>
-          <Text style={styles.formTitle}>Nouvelle action</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nom de l'action (ex: Révision voiture)"
-            placeholderTextColor={colors.textMuted}
-            value={newActionName}
-            onChangeText={setNewActionName}
-            autoFocus
-          />
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => setIsConfigurable(!isConfigurable)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: isConfigurable }}
-          >
-            <View style={[styles.checkbox, isConfigurable && styles.checkboxChecked]}>
-              {isConfigurable && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>Configurable (avec champs personnalisés)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton} onPress={handleAddAction}>
-            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
-              <Text style={styles.submitButtonText}>Créer</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <Pressable style={styles.overlay} onPress={() => { setShowAddForm(false); setNewActionName(''); setIsConfigurable(false); }}>
+          <View style={styles.addForm} onStartShouldSetResponder={() => true}>
+            <Text style={styles.formTitle}>Nouvelle action</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nom de l'action (ex: Révision voiture)"
+              placeholderTextColor={colors.textMuted}
+              value={newActionName}
+              onChangeText={setNewActionName}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setIsConfigurable(!isConfigurable)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isConfigurable }}
+            >
+              <View style={[styles.checkbox, isConfigurable && styles.checkboxChecked]}>
+                {isConfigurable && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.checkboxLabel}>Configurable (avec champs personnalisés)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={handleAddAction}>
+              <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+                <Text style={styles.submitButtonText}>Créer</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
       )}
 
       <InlineHint
@@ -292,9 +294,7 @@ export default function CategoryScreen({ route, navigation }) {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={[styles.emptyIcon, { backgroundColor: categoryColor + '20' }]}>
-                <Text style={[styles.emptyIconText, { color: categoryColor }]}>📋</Text>
-              </View>
+              <Ionicons name="list-outline" size={64} color={colors.textMuted} />
               <Text style={styles.emptyText}>
                 {searchQuery
                   ? 'Aucune action trouvée'
@@ -343,11 +343,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: spacing.sm,
   },
-  backButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
-  },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,6 +386,17 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.medium,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-start',
+    paddingTop: spacing.huge + spacing.xxl,
+    zIndex: 1000,
   },
   statsRow: {
     flexDirection: 'row',
@@ -495,17 +501,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.huge,
     paddingHorizontal: spacing.xl,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  emptyIconText: {
-    fontSize: 36,
   },
   emptyText: {
     textAlign: 'center',
