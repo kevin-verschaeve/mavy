@@ -122,15 +122,35 @@ export default function CategoryScreen({ route, navigation }) {
     });
   };
 
+  const handleConfigureAction = (action) => {
+    navigation.navigate('ConfigureAction', {
+      actionId: action.id,
+      actionName: action.name
+    });
+  };
+
   const handleActionLongPress = (action) => {
+    const options = [
+      { text: 'Renommer', onPress: () => handleRenameAction(action) },
+    ];
+
+    // Ajouter l'option "Configurer" si l'action est configurable
+    if (action.is_configurable === 1) {
+      options.push({
+        text: 'Configurer les champs',
+        onPress: () => handleConfigureAction(action)
+      });
+    }
+
+    options.push(
+      { text: 'Supprimer', onPress: () => handleDeleteAction(action), style: 'destructive' },
+      { text: 'Annuler', style: 'cancel' }
+    );
+
     Alert.alert(
       'Options',
       `Que voulez-vous faire avec "${action.name}" ?`,
-      [
-        { text: 'Renommer', onPress: () => handleRenameAction(action) },
-        { text: 'Supprimer', onPress: () => handleDeleteAction(action), style: 'destructive' },
-        { text: 'Annuler', style: 'cancel' }
-      ]
+      options
     );
   };
 
@@ -283,7 +303,7 @@ export default function CategoryScreen({ route, navigation }) {
 
       <InlineHint
         visible={showGestureHint && actions.length > 0}
-        message="Appui long sur une action pour plus d'options"
+        message="Appui long pour renommer, configurer ou supprimer"
       />
 
       <Pressable style={styles.listContainer} onPress={handleOutsidePress}>

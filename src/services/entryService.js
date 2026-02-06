@@ -56,6 +56,7 @@ export const entryService = {
             e.field_values,
             e.created_at,
             a.name as action_name,
+            a.is_configurable,
             c.name as category_name,
             c.icon as category_icon
           FROM entries e

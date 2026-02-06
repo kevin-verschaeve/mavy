@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.32.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "TURSO_URL": "$TURSO_URL_DEV",
+        "TURSO_AUTH_TOKEN": "$TURSO_TOKEN_DEV"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "TURSO_URL": "$TURSO_URL_PROD",
+        "TURSO_AUTH_TOKEN": "$TURSO_TOKEN_PROD"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "TURSO_URL": "$TURSO_URL_PROD",
+        "TURSO_AUTH_TOKEN": "$TURSO_TOKEN_PROD"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

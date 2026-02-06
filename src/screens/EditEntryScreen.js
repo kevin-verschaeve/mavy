@@ -59,16 +59,6 @@ export default function EditEntryScreen({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
-    // Vérifier que tous les champs sont remplis
-    const emptyFields = fields.filter(field => !fieldValues[field.field_name]?.trim());
-    if (emptyFields.length > 0) {
-      Alert.alert(
-        'Champs manquants',
-        `Veuillez remplir tous les champs : ${emptyFields.map(f => f.field_name).join(', ')}`
-      );
-      return;
-    }
-
     try {
       await entryService.updateFieldValues(entry.id, fieldValues);
       showToast('Modifications enregistrées');

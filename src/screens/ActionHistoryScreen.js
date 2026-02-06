@@ -155,12 +155,12 @@ export default function ActionHistoryScreen({ route, navigation }) {
       }
     }
 
-    const hasFields = item.field_values;
+    const isConfigurable = item.is_configurable === 1;
 
     return (
       <SwipeableRow
         onDelete={() => handleDelete(item)}
-        onEdit={hasFields ? () => handleEditFields(item) : undefined}
+        onEdit={isConfigurable ? () => handleEditFields(item) : undefined}
       >
         <TouchableOpacity
           style={styles.entryCard}
@@ -223,7 +223,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
       <InlineHint
         visible={showGestureHint && entries.length > 0}
-        message="Glissez vers la gauche pour supprimer, appuyez pour modifier la date"
+        message="Glissez pour modifier/supprimer, appuyez pour changer la date"
       />
 
       <FlatList

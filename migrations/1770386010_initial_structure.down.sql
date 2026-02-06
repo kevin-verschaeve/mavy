@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS entries;
+DROP TABLE IF EXISTS actions
+DROP TABLE IF EXISTS action_fields;
+DROP TABLE IF EXISTS categories;

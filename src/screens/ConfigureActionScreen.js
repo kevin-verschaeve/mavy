@@ -7,7 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Pressable
+  Pressable,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
   const [newFieldType, setNewFieldType] = useState('text');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingField, setEditingField] = useState(null);
+  const [initialFieldCount, setInitialFieldCount] = useState(null);
 
   const { showToast } = useToast();
 
@@ -35,6 +37,11 @@ export default function ConfigureActionScreen({ route, navigation }) {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       // Si des champs ont été ajoutés, laisser partir normalement
       if (fields.length > 0) {
+        return;
+      }
+
+      // Si on est en mode édition (des champs existaient au départ), laisser partir
+      if (initialFieldCount !== null && initialFieldCount > 0) {
         return;
       }
 
@@ -69,12 +76,16 @@ export default function ConfigureActionScreen({ route, navigation }) {
     });
 
     return unsubscribe;
-  }, [navigation, fields, actionId]);
+  }, [navigation, fields, actionId, initialFieldCount]);
 
   const loadFields = async () => {
     try {
       const data = await actionFieldService.getByAction(actionId);
       setFields(data);
+      // Sauvegarder le nombre initial de champs pour différencier création/édition
+      if (initialFieldCount === null) {
+        setInitialFieldCount(data.length);
+      }
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger les champs');
     }
@@ -281,9 +292,13 @@ export default function ConfigureActionScreen({ route, navigation }) {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.doneButton, fields.length === 0 && styles.doneButtonDisabled]}
+          style={[
+            styles.doneButton,
+            fields.length === 0 && initialFieldCount === 0 && styles.doneButtonDisabled
+          ]}
           onPress={() => {
-            if (fields.length === 0) {
+            // En mode création (pas de champs initiaux), exiger au moins 1 champ
+            if (fields.length === 0 && initialFieldCount === 0) {
               Alert.alert(
                 'Aucun champ',
                 'Vous devez ajouter au moins un champ avant de terminer la configuration.'
@@ -292,14 +307,18 @@ export default function ConfigureActionScreen({ route, navigation }) {
             }
             navigation.goBack();
           }}
-          disabled={fields.length === 0}
+          disabled={fields.length === 0 && initialFieldCount === 0}
         >
           <LinearGradient
-            colors={fields.length === 0 ? [colors.warmGray300, colors.warmGray400] : gradients.forest}
+            colors={
+              fields.length === 0 && initialFieldCount === 0
+                ? [colors.warmGray300, colors.warmGray400]
+                : gradients.forest
+            }
             style={styles.doneButtonGradient}
           >
             <Text style={styles.doneButtonText}>
-              {fields.length === 0 ? 'Ajoutez au moins 1 champ' : 'Terminé'}
+              {fields.length === 0 && initialFieldCount === 0 ? 'Ajoutez au moins 1 champ' : 'Terminé'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -529,6 +548,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl + spacing.lg : spacing.lg,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
