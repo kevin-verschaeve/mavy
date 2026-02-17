@@ -17,7 +17,6 @@ import ActionButton from '../components/ActionButton';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
-import { InlineHint } from '../components/GestureHint';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function CategoryScreen({ route, navigation }) {
@@ -29,7 +28,6 @@ export default function CategoryScreen({ route, navigation }) {
   const [isConfigurable, setIsConfigurable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showGestureHint, setShowGestureHint] = useState(true);
 
   const { showToast } = useToast();
 
@@ -209,9 +207,6 @@ export default function CategoryScreen({ route, navigation }) {
     if (showAddForm) {
       setShowAddForm(false);
     }
-    if (showGestureHint) {
-      setShowGestureHint(false);
-    }
   };
 
   const renderAction = ({ item }) => (
@@ -300,11 +295,6 @@ export default function CategoryScreen({ route, navigation }) {
           </View>
         </Pressable>
       )}
-
-      <InlineHint
-        visible={showGestureHint && actions.length > 0}
-        message="Appui long pour renommer, configurer ou supprimer"
-      />
 
       <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
         <FlatList

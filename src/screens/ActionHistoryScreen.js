@@ -16,7 +16,6 @@ import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
-import { InlineHint } from '../components/GestureHint';
 import { formatRelativeDate } from '../utils/dateUtils';
 import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
@@ -28,7 +27,6 @@ export default function ActionHistoryScreen({ route, navigation }) {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
-  const [showGestureHint, setShowGestureHint] = useState(true);
 
   const { showToast } = useToast();
 
@@ -221,11 +219,6 @@ export default function ActionHistoryScreen({ route, navigation }) {
         </View>
       </LinearGradient>
 
-      <InlineHint
-        visible={showGestureHint && entries.length > 0}
-        message="Glissez pour modifier/supprimer, appuyez pour changer la date"
-      />
-
       <FlatList
         data={entries}
         renderItem={renderEntry}
@@ -248,7 +241,6 @@ export default function ActionHistoryScreen({ route, navigation }) {
             </Text>
           </View>
         }
-        onScrollBeginDrag={() => setShowGestureHint(false)}
       />
 
       {showDatePicker && Platform.OS === 'ios' && (
