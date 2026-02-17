@@ -10,6 +10,7 @@ import {
   Pressable,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
@@ -28,6 +29,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
   const [initialFieldCount, setInitialFieldCount] = useState(null);
 
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadFields();
@@ -290,7 +292,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
         />
       </Pressable>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.lg + insets.bottom }]}>
         <TouchableOpacity
           style={[
             styles.doneButton,
