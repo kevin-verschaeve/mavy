@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
@@ -25,6 +26,7 @@ export default function AddEntryScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
 
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadFields();
@@ -129,7 +131,7 @@ export default function AddEntryScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.lg + insets.bottom }]}>
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => navigation.goBack()}

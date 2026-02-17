@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { UserProvider, useUser } from './src/contexts/UserContext';
 import { ToastProvider } from './src/components/Toast';
@@ -79,11 +80,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
-    </UserProvider>
+    <SafeAreaProvider>
+      <UserProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }
 
