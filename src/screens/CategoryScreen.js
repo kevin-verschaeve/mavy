@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Pressable
+  Pressable,
+  Modal
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,9 @@ export default function CategoryScreen({ route, navigation }) {
   const [isConfigurable, setIsConfigurable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [renamingAction, setRenamingAction] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef(null);
 
   const { showToast } = useToast();
 
@@ -153,31 +157,24 @@ export default function CategoryScreen({ route, navigation }) {
   };
 
   const handleRenameAction = (action) => {
-    Alert.prompt(
-      'Renommer l\'action',
-      'Entrez le nouveau nom :',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Renommer',
-          onPress: async (newName) => {
-            if (!newName || !newName.trim()) {
-              Alert.alert('Erreur', 'Le nom ne peut pas être vide');
-              return;
-            }
-            try {
-              await actionService.update(action.id, newName.trim());
-              loadActions();
-              showToast('Action renommée');
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de renommer l\'action');
-            }
-          }
-        }
-      ],
-      'plain-text',
-      action.name
-    );
+    setRenameValue(action.name);
+    setRenamingAction(action);
+    setTimeout(() => renameInputRef.current?.focus(), 100);
+  };
+
+  const handleRenameConfirm = async () => {
+    if (!renameValue.trim()) {
+      Alert.alert('Erreur', 'Le nom ne peut pas être vide');
+      return;
+    }
+    try {
+      await actionService.update(renamingAction.id, renameValue.trim());
+      setRenamingAction(null);
+      loadActions();
+      showToast('Action renommée');
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de renommer l\'action');
+    }
   };
 
   const handleDeleteAction = (action) => {
@@ -296,6 +293,43 @@ export default function CategoryScreen({ route, navigation }) {
         </Pressable>
       )}
 
+      <Modal
+        visible={!!renamingAction}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRenamingAction(null)}
+      >
+        <Pressable style={styles.centeredOverlay} onPress={() => setRenamingAction(null)}>
+          <View style={[styles.addForm, { marginHorizontal: 0, width: '100%' }]} onStartShouldSetResponder={() => true}>
+            <Text style={styles.formTitle}>Renommer l'action</Text>
+            <TextInput
+              ref={renameInputRef}
+              style={styles.input}
+              value={renameValue}
+              onChangeText={setRenameValue}
+              selectTextOnFocus
+              onSubmitEditing={handleRenameConfirm}
+              returnKeyType="done"
+            />
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <TouchableOpacity
+                style={[styles.submitButton, { flex: 1, backgroundColor: colors.warmGray100 }]}
+                onPress={() => setRenamingAction(null)}
+              >
+                <View style={[styles.submitButtonGradient, { backgroundColor: colors.warmGray200 }]}>
+                  <Text style={[styles.submitButtonText, { color: colors.textSecondary }]}>Annuler</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.submitButton, { flex: 1 }]} onPress={handleRenameConfirm}>
+                <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient}>
+                  <Text style={styles.submitButtonText}>Renommer</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+
       <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
         <FlatList
           data={filteredActions}
@@ -407,6 +441,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingTop: spacing.huge + spacing.xxl,
     zIndex: 1000,
+  },
+  centeredOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
   },
   statsRow: {
     flexDirection: 'row',
