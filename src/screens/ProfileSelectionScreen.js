@@ -19,7 +19,7 @@ export default function ProfileSelectionScreen({ onProfileSelected }) {
 
       {/* Background avec gradient */}
       <LinearGradient
-        colors={gradients.night}
+        colors={__DEV__ ? ['#064e3b', '#065f46'] : gradients.night}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.background}

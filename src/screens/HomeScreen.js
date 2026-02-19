@@ -9,9 +9,7 @@ import {
   Alert,
   Pressable,
   Modal,
-  StatusBar
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { categoryService } from '../services/categoryService';
 import { getCurrentUser, clearCurrentUser } from '../services/userService';
@@ -22,14 +20,13 @@ import SearchBar from '../components/SearchBar';
 import Input from '../components/Input';
 import GradientButton from '../components/GradientButton';
 import IconPicker from '../components/IconPicker';
+import Header from '../components/Header';
 import {
   colors,
-  gradients,
   categoryColors,
   spacing,
   typography,
   borderRadius,
-  touchTargets,
   shadows
 } from '../constants/theme';
 
@@ -228,49 +225,14 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
-      {/* Header avec gradient */}
-      <LinearGradient
-        colors={gradients.night}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.leftSection}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>Catégories</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{categories.length}</Text>
-              </View>
-            </View>
-            {currentUser && (
-              <TouchableOpacity
-                style={styles.profileButton}
-                onPress={handleChangeProfile}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="person-circle-outline" size={16} color={colors.textInverse} />
-                <Text style={styles.profileButtonText}>{currentUser.name}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddForm(!showAddForm)}
-            accessibilityLabel="Ajouter une catégorie"
-            accessibilityRole="button"
-          >
-            <LinearGradient
-              colors={gradients.primary}
-              style={styles.addButtonGradient}
-            >
-              <Ionicons name="add" size={32} color={colors.textInverse} />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <Header
+        title="Catégories"
+        count={categories.length}
+        onAdd={() => setShowAddForm(!showAddForm)}
+        addOpen={showAddForm}
+        extended
+        profile={currentUser ? { name: currentUser.name, onPress: handleChangeProfile } : null}
+      />
 
       {/* Contenu principal */}
       <View style={styles.content}>
@@ -412,68 +374,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingTop: spacing.huge + spacing.lg,
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.xl,
-    borderBottomLeftRadius: borderRadius.xxl,
-    borderBottomRightRadius: borderRadius.xxl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  leftSection: {
-    flex: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: borderRadius.md,
-    alignSelf: 'flex-start',
-  },
-  profileButtonText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textInverse,
-    marginLeft: spacing.xs,
-    fontWeight: typography.weights.medium,
-  },
-  title: {
-    fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-    marginLeft: spacing.sm,
-  },
-  badgeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  addButton: {
-    ...shadows.primary,
-  },
-  addButtonGradient: {
-    width: touchTargets.large,
-    height: touchTargets.large,
-    borderRadius: borderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -484,35 +384,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingTop: spacing.huge + spacing.xxl,
     zIndex: 1000,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xxl,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  statItem: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  statNumber: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  statLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginTop: spacing.xs,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   content: {
     flex: 1,

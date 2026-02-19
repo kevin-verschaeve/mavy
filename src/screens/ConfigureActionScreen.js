@@ -17,6 +17,7 @@ import { actionFieldService } from '../services/actionFieldService';
 import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import SwipeableRow from '../components/SwipeableRow';
+import Header from '../components/Header';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 export default function ConfigureActionScreen({ route, navigation }) {
@@ -198,39 +199,14 @@ export default function ConfigureActionScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header avec dégradé */}
-      <LinearGradient
-        colors={gradients.night}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>Configuration</Text>
-            <View style={styles.titleRow}>
-              <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{fields.length}</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddForm(!showAddForm)}
-            accessibilityLabel="Ajouter un champ"
-            accessibilityRole="button"
-          >
-            <LinearGradient colors={gradients.primary} style={styles.addButtonGradient}>
-              <Text style={styles.addButtonText}>{showAddForm ? '×' : '+'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <Header
+        title={actionName}
+        subtitle="Configuration"
+        count={fields.length}
+        onBack={() => navigation.goBack()}
+        onAdd={() => setShowAddForm(!showAddForm)}
+        addOpen={showAddForm}
+      />
 
       {showAddForm && (
         <Pressable style={styles.overlay} onPress={handleOutsidePress}>
@@ -336,67 +312,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-  },
-  header: {
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginBottom: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-    marginLeft: spacing.sm,
-  },
-  badgeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  addButton: {
-    borderRadius: touchTargets.minimum / 2,
-    overflow: 'hidden',
-    ...shadows.primary,
-  },
-  addButtonGradient: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
   },
   overlay: {
     position: 'absolute',

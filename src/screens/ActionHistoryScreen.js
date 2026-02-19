@@ -9,7 +9,6 @@ import {
   Alert,
   Platform
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { entryService } from '../services/entryService';
@@ -17,7 +16,8 @@ import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
 import { formatRelativeDate } from '../utils/dateUtils';
-import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
+import Header from '../components/Header';
+import { colors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
 export default function ActionHistoryScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
@@ -195,29 +195,12 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header avec dégradé */}
-      <LinearGradient
-        colors={gradients.night}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>Historique</Text>
-            <View style={styles.titleRow}>
-              <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{entries.length}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
+      <Header
+        title={actionName}
+        subtitle="Historique"
+        count={entries.length}
+        onBack={() => navigation.goBack()}
+      />
 
       <FlatList
         data={entries}
@@ -281,51 +264,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginBottom: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-    marginLeft: spacing.sm,
-  },
-  badgeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
   },
   list: {
     padding: spacing.lg,

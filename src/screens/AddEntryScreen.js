@@ -17,7 +17,8 @@ import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
-import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
+import Header from '../components/Header';
+import { colors, gradients, spacing, typography, borderRadius, shadows } from '../constants/theme';
 
 export default function AddEntryScreen({ route, navigation }) {
   const { action } = route.params;
@@ -75,24 +76,11 @@ export default function AddEntryScreen({ route, navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Header avec dégradé */}
-      <LinearGradient
-        colors={gradients.night}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>Nouvelle entrée</Text>
-            <Text style={styles.headerTitle} numberOfLines={1}>{action.name}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+      <Header
+        title={action.name}
+        subtitle="Nouvelle entrée"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.form}>
@@ -152,35 +140,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginBottom: spacing.xs,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
   },
   scrollView: {
     flex: 1,

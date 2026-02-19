@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
-import { colors, gradients, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
+import Header from '../components/Header';
+import { colors, gradients, spacing, typography, borderRadius, shadows } from '../constants/theme';
 
 export default function EditEntryScreen({ route, navigation }) {
   const { entry, actionId, actionName } = route.params;
@@ -85,24 +85,11 @@ export default function EditEntryScreen({ route, navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Header avec dégradé */}
-      <LinearGradient
-        colors={gradients.night}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>Modifier l'entrée</Text>
-            <Text style={styles.headerTitle} numberOfLines={1}>{actionName}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+      <Header
+        title={actionName}
+        subtitle="Modifier l'entrée"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.form}>
@@ -158,35 +145,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginBottom: spacing.xs,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
   },
   scrollView: {
     flex: 1,

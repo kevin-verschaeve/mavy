@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import ActionButton from '../components/ActionButton';
+import Header from '../components/Header';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
@@ -222,38 +223,13 @@ export default function CategoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header avec dégradé */}
-      <LinearGradient
-        colors={gradients.night}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={28} color={colors.textInverse} />
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title} numberOfLines={1}>{categoryName}</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{actions.length}</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddForm(!showAddForm)}
-            accessibilityLabel="Ajouter une action"
-            accessibilityRole="button"
-          >
-            <LinearGradient colors={gradients.primary} style={styles.addButtonGradient}>
-              <Text style={styles.addButtonText}>{showAddForm ? '×' : '+'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <Header
+        title={categoryName}
+        count={actions.length}
+        onBack={() => navigation.goBack()}
+        onAdd={() => setShowAddForm(!showAddForm)}
+        addOpen={showAddForm}
+      />
 
       <SearchBar
         value={searchQuery}
@@ -365,72 +341,6 @@ const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
   },
-  header: {
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  backButton: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: spacing.sm,
-  },
-  title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-    marginLeft: spacing.sm,
-  },
-  badgeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  addButton: {
-    borderRadius: touchTargets.minimum / 2,
-    overflow: 'hidden',
-    ...shadows.primary,
-  },
-  addButtonGradient: {
-    width: touchTargets.minimum,
-    height: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.medium,
-  },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -448,34 +358,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textInverse,
-  },
-  statLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray400,
-    marginTop: spacing.xs,
-  },
-  statDivider: {
-    width: 3,
-    height: 30,
-    borderRadius: 2,
-    marginHorizontal: spacing.lg,
   },
   addForm: {
     backgroundColor: colors.surface,
