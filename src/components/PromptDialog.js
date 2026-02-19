@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -24,10 +24,12 @@ export default function PromptDialog({
   cancelText = 'Annuler',
 }) {
   const [value, setValue] = useState(defaultValue);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
       setValue(defaultValue);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [visible, defaultValue]);
 
@@ -51,6 +53,7 @@ export default function PromptDialog({
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
         <TouchableOpacity
           style={styles.backdrop}
@@ -62,13 +65,15 @@ export default function PromptDialog({
             {message && <Text style={styles.message}>{message}</Text>}
 
             <TextInput
+              ref={inputRef}
               style={styles.input}
               value={value}
               onChangeText={setValue}
               placeholder={placeholder}
               placeholderTextColor={colors.textMuted}
-              autoFocus
               selectTextOnFocus
+              onSubmitEditing={handleConfirm}
+              returnKeyType="done"
             />
 
             <View style={styles.buttons}>

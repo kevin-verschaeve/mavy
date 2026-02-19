@@ -17,10 +17,8 @@ import { useUser } from '../contexts/UserContext';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
-import SwipeableRow from '../components/SwipeableRow';
 import Input from '../components/Input';
 import GradientButton from '../components/GradientButton';
-import { InlineHint } from '../components/GestureHint';
 import PromptDialog from '../components/PromptDialog';
 import {
   colors,
@@ -39,7 +37,6 @@ export default function HomeScreen({ navigation }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showGestureHint, setShowGestureHint] = useState(true);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [categoryToRename, setCategoryToRename] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -156,9 +153,6 @@ export default function HomeScreen({ navigation }) {
     if (showAddForm) {
       setShowAddForm(false);
     }
-    if (showGestureHint) {
-      setShowGestureHint(false);
-    }
   };
 
   const handleChangeProfile = () => {
@@ -183,34 +177,39 @@ export default function HomeScreen({ navigation }) {
     return categoryColors[index % categoryColors.length];
   };
 
+  const handleCategoryLongPress = (category) => {
+    Alert.alert(
+      category.name,
+      'Que voulez-vous faire ?',
+      [
+        { text: 'Renommer', onPress: () => handleRenameCategory(category) },
+        { text: 'Supprimer', onPress: () => handleDeleteCategory(category), style: 'destructive' },
+        { text: 'Annuler', style: 'cancel' }
+      ]
+    );
+  };
+
   const renderCategory = ({ item, index }) => {
     const accentColor = item.color || getCategoryColor(index);
 
     return (
-      <SwipeableRow
-        onDelete={() => handleDeleteCategory(item)}
-        onEdit={() => handleRenameCategory(item)}
+      <TouchableOpacity
+        style={[styles.categoryCard, { borderColor: accentColor }]}
+        onPress={() => navigation.navigate('Category', {
+          categoryId: item.id,
+          categoryName: item.name,
+          colorIndex: index
+        })}
+        onLongPress={() => handleCategoryLongPress(item)}
+        activeOpacity={0.7}
       >
-        <TouchableOpacity
-          style={[styles.categoryCard, { borderColor: accentColor }]}
-          onPress={() => navigation.navigate('Category', {
-            categoryId: item.id,
-            categoryName: item.name,
-            colorIndex: index
-          })}
-          activeOpacity={0.7}
-        >
-          {item.icon && (
-            <View style={[styles.categoryIconContainer, { backgroundColor: accentColor + '20' }]}>
-              <Text style={styles.categoryIcon}>{item.icon}</Text>
-            </View>
-          )}
-          <View style={styles.categoryInfo}>
-            <Text style={styles.categoryName}>{item.name}</Text>
+        {item.icon && (
+          <View style={[styles.categoryIconContainer, { backgroundColor: accentColor + '20' }]}>
+            <Text style={styles.categoryIcon}>{item.icon}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </SwipeableRow>
+        )}
+        <Text style={styles.categoryName} numberOfLines={2}>{item.name}</Text>
+      </TouchableOpacity>
     );
   };
 
@@ -300,16 +299,13 @@ export default function HomeScreen({ navigation }) {
           </Pressable>
         )}
 
-        <InlineHint
-          visible={showGestureHint && categories.length > 0}
-          message="Glissez vers la gauche pour modifier ou supprimer"
-        />
-
         <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
           <FlatList
             data={filteredCategories}
             renderItem={renderCategory}
             keyExtractor={(item) => item.id.toString()}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -496,39 +492,38 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.sm,
   },
+  row: {
+    justifyContent: 'space-between',
+  },
   categoryCard: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     borderWidth: 2,
     borderColor: colors.border,
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    padding: spacing.lg,
     marginBottom: spacing.md,
-    minHeight: 68,
+    width: '48%',
+    aspectRatio: 1,
     ...shadows.sm,
   },
   categoryIconContainer: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    marginBottom: spacing.sm,
   },
   categoryIcon: {
-    fontSize: 20,
-  },
-  categoryInfo: {
-    flex: 1,
-    justifyContent: 'center',
+    fontSize: 24,
   },
   categoryName: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
