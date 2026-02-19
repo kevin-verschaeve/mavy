@@ -45,7 +45,7 @@ export const categoryService = {
   },
 
   // Mettre à jour une catégorie (seulement si elle appartient à l'utilisateur)
-  async update(id, name) {
+  async update(id, name, icon = undefined) {
     const db = getTursoClient();
     const userId = await getCurrentUserId();
 
@@ -54,10 +54,17 @@ export const categoryService = {
     }
 
     try {
-      await db.execute({
-        sql: 'UPDATE categories SET name = ? WHERE id = ? AND user_id = ?',
-        args: [name, id, userId]
-      });
+      if (icon !== undefined) {
+        await db.execute({
+          sql: 'UPDATE categories SET name = ?, icon = ? WHERE id = ? AND user_id = ?',
+          args: [name, icon, id, userId]
+        });
+      } else {
+        await db.execute({
+          sql: 'UPDATE categories SET name = ? WHERE id = ? AND user_id = ?',
+          args: [name, id, userId]
+        });
+      }
       return true;
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la catégorie:', error);

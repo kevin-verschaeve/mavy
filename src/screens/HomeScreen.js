@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  TextInput,
   TouchableOpacity,
   Alert,
   Pressable,
+  Modal,
   StatusBar
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +21,7 @@ import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
 import Input from '../components/Input';
 import GradientButton from '../components/GradientButton';
-import PromptDialog from '../components/PromptDialog';
+import IconPicker from '../components/IconPicker';
 import {
   colors,
   gradients,
@@ -36,10 +38,16 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState(null);
+  const [showIconPickerForAdd, setShowIconPickerForAdd] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [categoryToRename, setCategoryToRename] = useState(null);
+  const [categoryToEdit, setCategoryToEdit] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showIconPickerForEdit, setShowIconPickerForEdit] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const editNameRef = useRef(null);
 
   const { showToast } = useToast();
   const { refreshUser } = useUser();
@@ -87,8 +95,9 @@ export default function HomeScreen({ navigation }) {
     }
 
     try {
-      await categoryService.create(newCategoryName.trim());
+      await categoryService.create(newCategoryName.trim(), newCategoryIcon);
       setNewCategoryName('');
+      setNewCategoryIcon(null);
       setShowAddForm(false);
       loadCategories();
       showToast('Catégorie créée');
@@ -97,33 +106,33 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const handleRenameCategory = (category) => {
-    setCategoryToRename(category);
-    setShowRenameDialog(true);
+  const handleEditCategory = (category) => {
+    setCategoryToEdit(category);
+    setEditName(category.name);
+    setEditIcon(category.icon || null);
+    setShowEditModal(true);
+    setTimeout(() => editNameRef.current?.focus(), 100);
   };
 
-  const handleRenameConfirm = async (newName) => {
-    setShowRenameDialog(false);
-
-    if (!newName || !newName.trim()) {
+  const handleEditConfirm = async () => {
+    if (!editName.trim()) {
       Alert.alert('Erreur', 'Le nom ne peut pas être vide');
       return;
     }
-
     try {
-      await categoryService.update(categoryToRename.id, newName.trim());
+      await categoryService.update(categoryToEdit.id, editName.trim(), editIcon);
+      setShowEditModal(false);
+      setCategoryToEdit(null);
       loadCategories();
-      showToast('Catégorie renommée');
+      showToast('Catégorie modifiée');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de renommer la catégorie');
+      Alert.alert('Erreur', 'Impossible de modifier la catégorie');
     }
-
-    setCategoryToRename(null);
   };
 
-  const handleRenameCancel = () => {
-    setShowRenameDialog(false);
-    setCategoryToRename(null);
+  const handleEditCancel = () => {
+    setShowEditModal(false);
+    setCategoryToEdit(null);
   };
 
   const handleDeleteCategory = (category) => {
@@ -182,7 +191,7 @@ export default function HomeScreen({ navigation }) {
       category.name,
       'Que voulez-vous faire ?',
       [
-        { text: 'Renommer', onPress: () => handleRenameCategory(category) },
+        { text: 'Modifier', onPress: () => handleEditCategory(category) },
         { text: 'Supprimer', onPress: () => handleDeleteCategory(category), style: 'destructive' },
         { text: 'Annuler', style: 'cancel' }
       ]
@@ -205,7 +214,7 @@ export default function HomeScreen({ navigation }) {
       >
         {item.icon && (
           <View style={[styles.categoryIconContainer, { backgroundColor: accentColor + '20' }]}>
-            <Text style={styles.categoryIcon}>{item.icon}</Text>
+            <Ionicons name={item.icon} size={28} color={accentColor} />
           </View>
         )}
         <Text style={styles.categoryName} numberOfLines={2}>{item.name}</Text>
@@ -272,7 +281,7 @@ export default function HomeScreen({ navigation }) {
         />
 
         {showAddForm && (
-          <Pressable style={styles.overlay} onPress={() => setShowAddForm(false)}>
+          <Pressable style={styles.overlay} onPress={() => { setShowAddForm(false); setNewCategoryIcon(null); }}>
             <View style={styles.addForm} onStartShouldSetResponder={() => true}>
               <Text style={styles.addFormTitle}>Nouvelle catégorie</Text>
               <Input
@@ -281,10 +290,23 @@ export default function HomeScreen({ navigation }) {
                 onChangeText={setNewCategoryName}
                 autoFocus
               />
+              <TouchableOpacity
+                style={styles.iconPickerButton}
+                onPress={() => setShowIconPickerForAdd(true)}
+              >
+                {newCategoryIcon
+                  ? <Ionicons name={newCategoryIcon} size={20} color={colors.primary} />
+                  : <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+                }
+                <Text style={[styles.iconPickerButtonText, newCategoryIcon && styles.iconPickerButtonTextActive]}>
+                  {newCategoryIcon ? 'Icône sélectionnée' : 'Choisir une icône (optionnel)'}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
               <View style={styles.addFormButtons}>
                 <TouchableOpacity
                   style={styles.cancelButton}
-                  onPress={() => setShowAddForm(false)}
+                  onPress={() => { setShowAddForm(false); setNewCategoryIcon(null); }}
                 >
                   <Text style={styles.cancelButtonText}>Annuler</Text>
                 </TouchableOpacity>
@@ -325,16 +347,61 @@ export default function HomeScreen({ navigation }) {
         </Pressable>
       </View>
 
-      <PromptDialog
-        visible={showRenameDialog}
-        title="Renommer la catégorie"
-        message="Entrez le nouveau nom :"
-        placeholder="Nom de la catégorie"
-        defaultValue={categoryToRename?.name || ''}
-        onConfirm={handleRenameConfirm}
-        onCancel={handleRenameCancel}
-        confirmText="Renommer"
-        cancelText="Annuler"
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleEditCancel}
+      >
+        <Pressable style={styles.centeredOverlay} onPress={handleEditCancel}>
+          <View style={styles.editModal} onStartShouldSetResponder={() => true}>
+            <Text style={styles.addFormTitle}>Modifier la catégorie</Text>
+            <TextInput
+              ref={editNameRef}
+              style={styles.editInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Nom de la catégorie"
+              placeholderTextColor={colors.textMuted}
+              selectTextOnFocus
+              onSubmitEditing={handleEditConfirm}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={styles.iconPickerButton}
+              onPress={() => setShowIconPickerForEdit(true)}
+            >
+              {editIcon
+                ? <Ionicons name={editIcon} size={20} color={colors.primary} />
+                : <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+              }
+              <Text style={[styles.iconPickerButtonText, editIcon && styles.iconPickerButtonTextActive]}>
+                {editIcon ? 'Icône sélectionnée' : 'Choisir une icône (optionnel)'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+            <View style={styles.addFormButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleEditCancel}>
+                <Text style={styles.cancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <View style={styles.buttonSpacer} />
+              <GradientButton title="Enregistrer" onPress={handleEditConfirm} style={styles.createButton} />
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <IconPicker
+        visible={showIconPickerForAdd}
+        selected={newCategoryIcon}
+        onSelect={setNewCategoryIcon}
+        onClose={() => setShowIconPickerForAdd(false)}
+      />
+      <IconPicker
+        visible={showIconPickerForEdit}
+        selected={editIcon}
+        onSelect={setEditIcon}
+        onClose={() => setShowIconPickerForEdit(false)}
       />
     </View>
   );
@@ -516,8 +583,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  categoryIcon: {
-    fontSize: 24,
+  centeredOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  editModal: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    width: '100%',
+    ...shadows.xl,
+  },
+  editInput: {
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    fontSize: typography.sizes.md,
+    backgroundColor: colors.warmGray50,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  iconPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.warmGray50,
+    marginBottom: spacing.lg,
+  },
+  iconPickerButtonText: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    color: colors.textMuted,
+  },
+  iconPickerButtonTextActive: {
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
   },
   categoryName: {
     fontSize: typography.sizes.md,
