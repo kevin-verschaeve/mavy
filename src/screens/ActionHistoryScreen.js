@@ -15,7 +15,7 @@ import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
-import { formatRelativeDate } from '../utils/dateUtils';
+import { formatRelativeDate, formatElapsedBetween } from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
@@ -154,38 +154,51 @@ export default function ActionHistoryScreen({ route, navigation }) {
     }
 
     const isConfigurable = item.is_configurable === 1;
+    const nextEntry = index < entries.length - 1 ? entries[index + 1] : null;
 
     return (
-      <SwipeableRow
-        onDelete={() => handleDelete(item)}
-        onEdit={isConfigurable ? () => handleEditFields(item) : undefined}
-      >
-        <TouchableOpacity
-          style={styles.entryCard}
-          onPress={() => handleEditDate(item)}
-          activeOpacity={0.7}
+      <>
+        <SwipeableRow
+          onDelete={() => handleDelete(item)}
+          onEdit={isConfigurable ? () => handleEditFields(item) : undefined}
         >
-          <View style={styles.entryHeader}>
-            <View style={styles.entryNumber}>
-              <Text style={styles.entryNumberText}>#{entries.length - index}</Text>
+          <TouchableOpacity
+            style={styles.entryCard}
+            onPress={() => handleEditDate(item)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.entryHeader}>
+              <View style={styles.entryNumber}>
+                <Text style={styles.entryNumberText}>#{entries.length - index}</Text>
+              </View>
+              <Text style={styles.date}>{formatDisplayDate(item.created_at)}</Text>
             </View>
-            <Text style={styles.date}>{formatDisplayDate(item.created_at)}</Text>
+
+            {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
+
+            {fieldValues && (
+              <View style={styles.fieldsContainer}>
+                {Object.entries(fieldValues).map(([key, value]) => (
+                  <View key={key} style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>{key}</Text>
+                    <Text style={styles.fieldValue}>{value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </TouchableOpacity>
+        </SwipeableRow>
+
+        {nextEntry && (
+          <View style={styles.elapsedSeparator}>
+            <View style={styles.elapsedLine} />
+            <Text style={styles.elapsedText}>
+              {formatElapsedBetween(item.created_at, nextEntry.created_at)}
+            </Text>
+            <View style={styles.elapsedLine} />
           </View>
-
-          {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
-
-          {fieldValues && (
-            <View style={styles.fieldsContainer}>
-              {Object.entries(fieldValues).map(([key, value]) => (
-                <View key={key} style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>{key}</Text>
-                  <Text style={styles.fieldValue}>{value}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </TouchableOpacity>
-      </SwipeableRow>
+        )}
+      </>
     );
   };
 
@@ -324,6 +337,22 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
+  },
+  elapsedSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  elapsedLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.warmGray200,
+  },
+  elapsedText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginHorizontal: spacing.sm,
   },
   emptyContainer: {
     alignItems: 'center',
