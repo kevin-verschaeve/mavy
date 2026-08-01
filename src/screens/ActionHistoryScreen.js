@@ -17,30 +17,42 @@ import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
-import { formatRelativeDate, formatElapsedBetween } from '../utils/dateUtils';
+import { formatRelativeDate, formatElapsedBetween, formatDayCount } from '../utils/dateUtils';
 import Header from '../components/Header';
-import { colors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
+import { colors, statusColors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+function parseLocalDate(dateString) {
+  const [y, m, d] = dateString.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Échéance du prochain rappel, qu'il soit périodique (court depuis la dernière
+// entrée) ou à date fixe. Retourne null quand aucun rappel n'est configuré.
 function computeDueDateInfo(action, lastEntry) {
-  if (!action?.reminder_interval_days || !lastEntry?.created_at) return null;
-
-  const [y, m, d] = lastEntry.created_at.split('-').map(Number);
-  const lastDate = new Date(y, m - 1, d);
-  const dueDate = new Date(lastDate);
-  dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
+  if (!action) return null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const daysUntilDue = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
   const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : 30;
 
-  return {
-    dueDate,
-    daysUntilDue,
-    isOverdue: daysUntilDue < 0,
-    isWarning: daysUntilDue <= warnDays,
-  };
+  let dueDate;
+  if (action.reminder_date) {
+    dueDate = parseLocalDate(action.reminder_date);
+    // Rappel one-shot déjà honoré par une entrée postérieure
+    if (lastEntry?.created_at && parseLocalDate(lastEntry.created_at) >= dueDate) return null;
+  } else if (action.reminder_interval_days && lastEntry?.created_at) {
+    dueDate = parseLocalDate(lastEntry.created_at);
+    dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
+  } else {
+    return null;
+  }
+
+  const daysUntilDue = Math.round((dueDate - today) / MS_PER_DAY);
+  const status = daysUntilDue < 0 ? 'overdue' : daysUntilDue <= warnDays ? 'warning' : 'ok';
+
+  return { dueDate, daysUntilDue, status };
 }
 
 export default function ActionHistoryScreen({ route, navigation }) {
@@ -174,40 +186,35 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
   const dueDateInfo = computeDueDateInfo(actionData, entries[0]);
 
+  const BANNER_ICONS = {
+    overdue: 'alert-circle',
+    warning: 'time',
+    ok: 'checkmark-circle',
+  };
+
   const renderDueDateBanner = () => {
     if (!dueDateInfo) return null;
 
-    const { dueDate, daysUntilDue, isOverdue, isWarning } = dueDateInfo;
+    const { dueDate, daysUntilDue, status } = dueDateInfo;
+    const palette = statusColors[status];
     const dueDateStr = dueDate.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
 
-    let icon, iconColor, bannerStyle, titleText;
-
-    if (isOverdue) {
-      icon = 'alert-circle';
-      iconColor = colors.danger;
-      bannerStyle = styles.bannerOverdue;
-      titleText = `En retard de ${Math.abs(daysUntilDue)} jour${Math.abs(daysUntilDue) > 1 ? 's' : ''}`;
-    } else if (isWarning) {
-      icon = 'alert-circle';
-      iconColor = colors.warning;
-      bannerStyle = styles.bannerWarning;
-      titleText = `Dans ${daysUntilDue} jour${daysUntilDue > 1 ? 's' : ''}`;
-    } else {
-      icon = 'calendar-outline';
-      iconColor = colors.primary;
-      bannerStyle = styles.bannerNormal;
-      titleText = `Dans ${daysUntilDue} jours`;
-    }
+    const titleText = daysUntilDue < 0
+      ? `En retard de ${formatDayCount(-daysUntilDue)}`
+      : daysUntilDue === 0
+        ? "À faire aujourd'hui"
+        : `Dans ${formatDayCount(daysUntilDue)}`;
 
     return (
-      <View style={[styles.banner, bannerStyle]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
+      <View style={[styles.banner, { backgroundColor: palette.tint }]}>
+        <View style={[styles.bannerAccent, { backgroundColor: palette.main }]} />
+        <Ionicons name={BANNER_ICONS[status]} size={20} color={palette.main} />
         <View style={styles.bannerTextContainer}>
-          <Text style={[styles.bannerTitle, { color: iconColor }]}>{titleText}</Text>
+          <Text style={[styles.bannerTitle, { color: palette.text }]}>{titleText}</Text>
           <Text style={styles.bannerSubtitle}>Prochain rappel le {dueDateStr}</Text>
         </View>
       </View>
@@ -226,50 +233,52 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
     const isConfigurable = item.is_configurable === 1;
     const nextEntry = index < entries.length - 1 ? entries[index + 1] : null;
+    const isLatest = index === 0;
 
     return (
-      <>
-        <SwipeableRow
-          onDelete={() => handleDelete(item)}
-          onEdit={isConfigurable ? () => handleEditFields(item) : undefined}
-        >
-          <TouchableOpacity
-            style={styles.entryCard}
-            onPress={() => handleEditDate(item)}
-            activeOpacity={0.7}
+      <View style={styles.timelineRow}>
+        {/* Rail : pastille alignée sur la date, trait qui descend vers l'entrée suivante */}
+        <View style={styles.rail}>
+          <View style={[styles.railDot, isLatest && styles.railDotLatest]} />
+          {nextEntry && <View style={styles.railLine} />}
+        </View>
+
+        <View style={styles.timelineContent}>
+          <SwipeableRow
+            onDelete={() => handleDelete(item)}
+            onEdit={isConfigurable ? () => handleEditFields(item) : undefined}
           >
-            <View style={styles.entryHeader}>
-              <View style={styles.entryNumber}>
-                <Text style={styles.entryNumberText}>#{entries.length - index}</Text>
-              </View>
+            <TouchableOpacity
+              style={styles.entryCard}
+              onPress={() => handleEditDate(item)}
+              activeOpacity={0.7}
+              accessibilityLabel={`Entrée du ${formatDisplayDate(item.created_at)}`}
+              accessibilityHint="Modifier la date"
+            >
               <Text style={styles.date}>{formatDisplayDate(item.created_at)}</Text>
-            </View>
 
-            {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
+              {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
 
-            {fieldValues && (
-              <View style={styles.fieldsContainer}>
-                {Object.entries(fieldValues).map(([key, value]) => (
-                  <View key={key} style={styles.fieldRow}>
-                    <Text style={styles.fieldLabel}>{key}</Text>
-                    <Text style={styles.fieldValue}>{value}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </TouchableOpacity>
-        </SwipeableRow>
+              {fieldValues && Object.keys(fieldValues).length > 0 && (
+                <View style={styles.fieldsContainer}>
+                  {Object.entries(fieldValues).map(([key, value]) => (
+                    <View key={key} style={styles.fieldRow}>
+                      <Text style={styles.fieldLabel} numberOfLines={1}>{key}</Text>
+                      <Text style={styles.fieldValue} numberOfLines={1}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </TouchableOpacity>
+          </SwipeableRow>
 
-        {nextEntry && (
-          <View style={styles.elapsedSeparator}>
-            <View style={styles.elapsedLine} />
+          {nextEntry && (
             <Text style={styles.elapsedText}>
               {formatElapsedBetween(item.created_at, nextEntry.created_at)}
             </Text>
-            <View style={styles.elapsedLine} />
-          </View>
-        )}
-      </>
+          )}
+        </View>
+      </View>
     );
   };
 
@@ -357,22 +366,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    padding: spacing.md,
+    paddingVertical: spacing.md,
+    paddingRight: spacing.md,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
+    overflow: 'hidden',
   },
-  bannerNormal: {
-    backgroundColor: colors.primaryLight + '30',
-    borderColor: colors.primaryLight,
-  },
-  bannerWarning: {
-    backgroundColor: colors.warningLight,
-    borderColor: colors.warning + '60',
-  },
-  bannerOverdue: {
-    backgroundColor: colors.dangerLight,
-    borderColor: colors.danger + '60',
+  bannerAccent: {
+    width: 5,
+    alignSelf: 'stretch',
+    marginVertical: -spacing.md,
   },
   bannerTextContainer: {
     flex: 1,
@@ -387,30 +389,46 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   list: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.huge,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+  },
+  rail: {
+    width: 20,
+    alignItems: 'center',
+  },
+  railDot: {
+    width: 9,
+    height: 9,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.warmGray300,
+    marginTop: spacing.lg + 2,
+  },
+  // L'entrée la plus récente porte la couleur primaire pour ancrer le regard en haut
+  railDotLatest: {
+    width: 13,
+    height: 13,
+    backgroundColor: colors.primary,
+    marginTop: spacing.lg,
+  },
+  railLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: colors.warmGray200,
+    marginTop: spacing.xs,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: spacing.md,
   },
   entryCard: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: borderRadius.xl,
-    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
     ...shadows.sm,
-  },
-  entryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  entryNumber: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    marginRight: spacing.sm,
-  },
-  entryNumberText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    color: colors.primary,
   },
   date: {
     fontSize: typography.sizes.md,
@@ -446,21 +464,10 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  elapsedSeparator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  elapsedLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.warmGray200,
-  },
   elapsedText: {
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
-    marginHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   emptyContainer: {
     alignItems: 'center',

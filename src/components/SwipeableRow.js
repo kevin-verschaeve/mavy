@@ -110,11 +110,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  // Les boutons épousent la hauteur de la carte : l'espacement entre cartes
+  // est la responsabilité de l'écran appelant, pas de ce composant.
   actionsContainer: {
     position: 'absolute',
     right: 0,
     top: 0,
-    bottom: spacing.md,
+    bottom: 0,
     flexDirection: 'row',
     gap: spacing.xs,
     paddingRight: spacing.xs,

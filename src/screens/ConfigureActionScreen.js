@@ -157,45 +157,44 @@ export default function ConfigureActionScreen({ route, navigation }) {
     }
   };
 
-  const renderField = ({ item }) => (
-    <SwipeableRow
-      onDelete={() => handleDeleteField(item)}
-      onEdit={() => handleEditField(item)}
-    >
-      <View style={styles.fieldCard}>
-        <View style={styles.fieldInfo}>
-          <Text style={styles.fieldName}>{item.field_name}</Text>
-          <View style={[
-            styles.fieldTypeBadge,
-            { backgroundColor: item.field_type === 'number' ? colors.accent + '20' : colors.primary + '20' }
-          ]}>
-            <Text style={[
-              styles.fieldTypeBadgeText,
-              { color: item.field_type === 'number' ? colors.accent : colors.primary }
-            ]}>
-              {item.field_type === 'number' ? 'Nombre' : 'Texte'}
-            </Text>
+  const renderField = ({ item, index }) => {
+    const isNumber = item.field_type === 'number';
+    const typeColor = isNumber ? colors.accent : colors.primary;
+
+    return (
+      <SwipeableRow
+        onDelete={() => handleDeleteField(item)}
+        onEdit={() => handleEditField(item)}
+      >
+        <TouchableOpacity
+          style={styles.fieldCard}
+          onPress={() => handleEditField(item)}
+          activeOpacity={0.7}
+          accessibilityLabel={`Champ ${item.field_name}, type ${isNumber ? 'nombre' : 'texte'}`}
+          accessibilityHint="Modifier ce champ. Balayer vers la gauche pour supprimer"
+        >
+          <View style={styles.fieldOrder}>
+            <Text style={styles.fieldOrderText}>{index + 1}</Text>
           </View>
-        </View>
-        <View style={styles.fieldActions}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => handleEditField(item)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconButton, styles.deleteIconButton]}
-            onPress={() => handleDeleteField(item)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SwipeableRow>
-  );
+
+          <View style={[styles.fieldTypeIcon, { backgroundColor: typeColor + '18' }]}>
+            <Ionicons
+              name={isNumber ? 'calculator-outline' : 'text-outline'}
+              size={18}
+              color={typeColor}
+            />
+          </View>
+
+          <View style={styles.fieldInfo}>
+            <Text style={styles.fieldName} numberOfLines={1}>{item.field_name}</Text>
+            <Text style={styles.fieldType}>{isNumber ? 'Nombre' : 'Texte'}</Text>
+          </View>
+
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      </SwipeableRow>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -223,22 +222,30 @@ export default function ConfigureActionScreen({ route, navigation }) {
 
             <Text style={styles.typeLabel}>Type de champ</Text>
             <View style={styles.typeSelector}>
-              <TouchableOpacity
-                style={[styles.typeButton, newFieldType === 'text' && styles.typeButtonSelected]}
-                onPress={() => setNewFieldType('text')}
-              >
-                <Text style={[styles.typeButtonText, newFieldType === 'text' && styles.typeButtonTextSelected]}>
-                  ABC Texte
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeButton, newFieldType === 'number' && styles.typeButtonSelected]}
-                onPress={() => setNewFieldType('number')}
-              >
-                <Text style={[styles.typeButtonText, newFieldType === 'number' && styles.typeButtonTextSelected]}>
-                  123 Nombre
-                </Text>
-              </TouchableOpacity>
+              {[
+                { key: 'text', label: 'Texte', icon: 'text-outline' },
+                { key: 'number', label: 'Nombre', icon: 'calculator-outline' },
+              ].map((type) => {
+                const selected = newFieldType === type.key;
+                return (
+                  <TouchableOpacity
+                    key={type.key}
+                    style={[styles.typeButton, selected && styles.typeButtonSelected]}
+                    onPress={() => setNewFieldType(type.key)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    <Ionicons
+                      name={type.icon}
+                      size={20}
+                      color={selected ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={[styles.typeButtonText, selected && styles.typeButtonTextSelected]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <TouchableOpacity style={styles.submitButton} onPress={handleAddField}>
@@ -255,6 +262,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
           data={fields}
           renderItem={renderField}
           keyExtractor={(item) => item.id.toString()}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -360,6 +368,8 @@ const styles = StyleSheet.create({
   },
   typeButton: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
@@ -371,7 +381,7 @@ const styles = StyleSheet.create({
   },
   typeButtonSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primaryLight + '40',
   },
   typeButtonText: {
     fontSize: typography.sizes.md,
@@ -398,53 +408,48 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.lg,
   },
+  separator: {
+    height: spacing.sm,
+  },
   fieldCard: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    ...shadows.md,
+    gap: spacing.md,
+    minHeight: touchTargets.large,
+    ...shadows.sm,
+  },
+  // Numéro d'ordre : les champs apparaissent dans cet ordre à la saisie
+  fieldOrder: {
+    width: 20,
+  },
+  fieldOrderText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textMuted,
+  },
+  fieldTypeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   fieldInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    flex: 1,
   },
   fieldName: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  fieldTypeBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  fieldTypeBadgeText: {
+  fieldType: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-  },
-  fieldActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  iconButton: {
-    padding: spacing.xs,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.warmGray100,
-    minWidth: touchTargets.minimum,
-    minHeight: touchTargets.minimum,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteIconButton: {
-    backgroundColor: colors.danger + '15',
+    color: colors.textMuted,
+    marginTop: 1,
   },
   emptyContainer: {
     alignItems: 'center',

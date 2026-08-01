@@ -78,6 +78,36 @@ export const colors = {
   overlayLight: 'rgba(28, 25, 23, 0.1)',
 };
 
+/**
+ * Couleurs de statut des rappels.
+ *
+ * La couleur porte l'information d'urgence : elle pilote la barre d'accent,
+ * le bouton d'enregistrement et le texte de l'échéance sur chaque carte.
+ * `tint` est un fond très clair, lisible derrière du texte `main`.
+ */
+export const statusColors = {
+  overdue: {
+    main: '#e11d48',
+    tint: '#fff1f2',
+    text: '#be123c',
+  },
+  warning: {
+    main: '#f59e0b',
+    tint: '#fffbeb',
+    text: '#b45309',
+  },
+  ok: {
+    main: '#10b981',
+    tint: '#ecfdf5',
+    text: '#047857',
+  },
+  neutral: {
+    main: '#a8a29e',
+    tint: '#f5f5f4',
+    text: '#57534e',
+  },
+};
+
 // Dégradés prédéfinis
 export const gradients = {
   primary: ['#6366f1', '#8b5cf6'],
@@ -207,6 +237,7 @@ export const animation = {
 export default {
   colors,
   gradients,
+  statusColors,
   categoryColors,
   spacing,
   typography,

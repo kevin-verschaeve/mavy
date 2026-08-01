@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
-import ActionButton from '../components/ActionButton';
+import ActionButton, { computeReminder } from '../components/ActionButton';
 import Header from '../components/Header';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
@@ -225,6 +225,20 @@ export default function CategoryScreen({ route, navigation }) {
       action.name.toLowerCase().includes(query)
     );
   }, [actions, searchQuery]);
+
+  // Les plus urgentes remontent en tête de liste. Tri stable : à urgence égale,
+  // l'ordre renvoyé par la base est préservé.
+  const sortedActions = useMemo(() => {
+    const rank = { overdue: 0, warning: 1, ok: 2 };
+    return filteredActions
+      .map((action, index) => ({ action, index }))
+      .sort((a, b) => {
+        const rankA = rank[computeReminder(a.action, lastEntries[a.action.id]).status] ?? 3;
+        const rankB = rank[computeReminder(b.action, lastEntries[b.action.id]).status] ?? 3;
+        return rankA - rankB || a.index - b.index;
+      })
+      .map(({ action }) => action);
+  }, [filteredActions, lastEntries]);
 
   const resetAddForm = () => {
     setNewActionName('');
@@ -611,7 +625,7 @@ export default function CategoryScreen({ route, navigation }) {
 
       <Pressable style={styles.listContainer} onPress={handleOutsidePress}>
         <FlatList
-          data={filteredActions}
+          data={sortedActions}
           renderItem={renderAction}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
@@ -769,7 +783,8 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
   list: {
-    paddingVertical: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.huge,
   },
   emptyContainer: {
     alignItems: 'center',
