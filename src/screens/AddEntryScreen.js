@@ -59,13 +59,7 @@ export default function AddEntryScreen({ route, navigation }) {
       showToast(`"${action.name}" enregistré`);
       navigation.goBack();
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Erreur',
-        text2: 'Impossible d\'enregistrer l\'entrée',
-        position: 'top',
-        visibilityTime: 3000
-      });
+      showToast('Impossible d\'enregistrer l\'entrée', 'error');
     }
   };
 

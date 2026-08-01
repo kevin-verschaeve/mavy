@@ -66,13 +66,7 @@ export default function EditEntryScreen({ route, navigation }) {
       showToast('Modifications enregistrées');
       navigation.goBack();
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Erreur',
-        text2: 'Impossible de modifier l\'entrée',
-        position: 'top',
-        visibilityTime: 3000
-      });
+      showToast('Impossible de modifier l\'entrée', 'error');
     }
   };
 

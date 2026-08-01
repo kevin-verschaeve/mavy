@@ -1,95 +1,122 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, borderRadius, shadows, animation } from '../constants/theme';
 
 const ToastContext = createContext(null);
 
 const TOAST_DURATION = 3000;
+const ENTER_OFFSET = 24;
 
+/**
+ * Snackbar de confirmation, ancré en bas d'écran.
+ *
+ * Le bas est la seule zone libre de contrôles : tous les boutons d'action
+ * (+, ×, retour, profil) vivent dans le Header. Un toast en haut recouvrait
+ * le bouton + et débordait sous la status bar.
+ *
+ * Un seul message à la fois : pour des confirmations de 3s, empiler ne fait
+ * qu'ajouter du bruit. Un nouveau message remplace le précédent.
+ */
 export function ToastProvider({ children }) {
-  const [toasts, setToasts] = useState([]);
+  const [toast, setToast] = useState(null);
   const toastId = useRef(0);
 
   const showToast = useCallback((message, type = 'success') => {
-    const id = toastId.current++;
-    setToasts((prev) => [...prev, { id, message, type }]);
-
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, TOAST_DURATION);
+    setToast({ id: toastId.current++, message, type });
   }, []);
 
   const hideToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    setToast((current) => (current && current.id === id ? null : current));
   }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <View style={styles.container} pointerEvents="box-none">
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onHide={() => hideToast(toast.id)} />
-        ))}
-      </View>
+      {toast && (
+        <Snackbar
+          // La clé force un remontage : le nouveau message rejoue l'animation
+          // d'entrée et repart sur un timer neuf au lieu d'hériter de l'ancien.
+          key={toast.id}
+          toast={toast}
+          onHide={() => hideToast(toast.id)}
+        />
+      )}
     </ToastContext.Provider>
   );
 }
 
-function ToastItem({ toast, onHide }) {
+function Snackbar({ toast, onHide }) {
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-20)).current;
+  const translateY = useRef(new Animated.Value(ENTER_OFFSET)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    let dismissed = false;
 
-    const timeout = setTimeout(() => {
+    const animateTo = (toOpacity, toTranslate, onDone) =>
       Animated.parallel([
         Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
+          toValue: toOpacity,
+          duration: animation.normal,
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: -20,
-          duration: 200,
+          toValue: toTranslate,
+          duration: animation.normal,
           useNativeDriver: true,
         }),
-      ]).start();
-    }, TOAST_DURATION - 400);
+      ]).start(onDone);
 
-    return () => clearTimeout(timeout);
+    animateTo(1, 0);
+
+    const timeout = setTimeout(() => {
+      dismissed = true;
+      animateTo(0, ENTER_OFFSET, onHide);
+    }, TOAST_DURATION);
+
+    return () => {
+      clearTimeout(timeout);
+      // Démontage anticipé (nouveau toast) : ne pas laisser le timer déclencher
+      // onHide, il effacerait le message qui vient de le remplacer.
+      if (!dismissed) opacity.stopAnimation();
+    };
   }, []);
 
-  const backgroundColor =
-    toast.type === 'success'
-      ? colors.success
-      : toast.type === 'error'
-        ? colors.danger
-        : colors.warmGray700;
+  const isError = toast.type === 'error';
 
   return (
-    <Animated.View
-      style={[
-        styles.toast,
-        { backgroundColor, opacity, transform: [{ translateY }] },
-      ]}
+    <View
+      style={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
+      pointerEvents="box-none"
     >
-      <Text style={styles.toastText}>{toast.message}</Text>
-      <TouchableOpacity onPress={onHide} style={styles.closeButton}>
-        <Text style={styles.closeText}>×</Text>
-      </TouchableOpacity>
-    </Animated.View>
+      <Animated.View
+        style={[
+          styles.snackbar,
+          isError && styles.snackbarError,
+          { opacity, transform: [{ translateY }] },
+        ]}
+      >
+        <Ionicons
+          name={isError ? 'alert-circle' : 'checkmark-circle'}
+          size={18}
+          color={isError ? colors.textInverse : colors.success}
+        />
+        <Text style={styles.text} numberOfLines={2}>
+          {toast.message}
+        </Text>
+        <TouchableOpacity
+          onPress={onHide}
+          style={styles.closeButton}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Fermer la notification"
+          accessibilityRole="button"
+        >
+          <Ionicons name="close" size={16} color={colors.warmGray400} />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -104,38 +131,34 @@ export function useToast() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: spacing.xs,
     left: spacing.lg,
     right: spacing.lg,
+    bottom: 0,
+    alignItems: 'center',
     zIndex: 9999,
   },
-  toast: {
+  snackbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
+    maxWidth: '100%',
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.md,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.warmGray900,
+    ...shadows.lg,
   },
-  toastText: {
+  snackbarError: {
+    backgroundColor: colors.danger,
+  },
+  text: {
     color: colors.textInverse,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
-    flex: 1,
+    flexShrink: 1,
   },
   closeButton: {
-    marginLeft: spacing.sm,
     padding: spacing.xs,
-  },
-  closeText: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
   },
 });
