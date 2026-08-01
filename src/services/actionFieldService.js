@@ -24,7 +24,8 @@ export const actionFieldService = {
         sql: 'INSERT INTO action_fields (action_id, field_name, field_type, display_order) VALUES (?, ?, ?, ?)',
         args: [actionId, fieldName, fieldType, displayOrder]
       });
-      return result.lastInsertRowid;
+      // libsql renvoie un BigInt : non sérialisable dans les params de navigation
+      return Number(result.lastInsertRowid);
     } catch (error) {
       console.error('Erreur lors de la création du champ:', error);
       throw error;

@@ -416,11 +416,10 @@ export default function CategoryScreen({ route, navigation }) {
     }
   };
 
-  const handleDateChange = (event, selectedDate) => {
+  const handleDateValueChange = (event, selectedDate) => {
     const target = datePickerTarget;
     if (Platform.OS === 'android') {
       setDatePickerTarget(null);
-      if (event.type === 'dismissed') return;
     }
     if (!selectedDate) return;
     if (target === 'new') {
@@ -428,6 +427,10 @@ export default function CategoryScreen({ route, navigation }) {
     } else {
       setReminderFixedDate(selectedDate);
     }
+  };
+
+  const handleDatePickerDismiss = () => {
+    setDatePickerTarget(null);
   };
 
   const handleDeleteAction = (action) => {
@@ -664,7 +667,8 @@ export default function CategoryScreen({ route, navigation }) {
                 value={(datePickerTarget === 'new' ? newFixedDate : reminderFixedDate) || new Date()}
                 mode="date"
                 display="spinner"
-                onChange={handleDateChange}
+                onValueChange={handleDateValueChange}
+                onDismiss={handleDatePickerDismiss}
               />
             </View>
           </Pressable>
@@ -676,7 +680,8 @@ export default function CategoryScreen({ route, navigation }) {
           value={(datePickerTarget === 'new' ? newFixedDate : reminderFixedDate) || new Date()}
           mode="date"
           display="default"
-          onChange={handleDateChange}
+          onValueChange={handleDateValueChange}
+          onDismiss={handleDatePickerDismiss}
         />
       )}
     </View>

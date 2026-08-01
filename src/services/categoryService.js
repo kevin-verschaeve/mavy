@@ -37,7 +37,8 @@ export const categoryService = {
         sql: 'INSERT INTO categories (user_id, name, icon, color) VALUES (?, ?, ?, ?)',
         args: [userId, name, icon, color]
       });
-      return result.lastInsertRowid;
+      // libsql renvoie un BigInt : non sérialisable dans les params de navigation
+      return Number(result.lastInsertRowid);
     } catch (error) {
       console.error('Erreur lors de la création de la catégorie:', error);
       throw error;

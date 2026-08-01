@@ -55,7 +55,8 @@ export const actionService = {
         sql: 'INSERT INTO actions (category_id, name, is_configurable, reminder_interval_days, reminder_warn_days, reminder_date) VALUES (?, ?, ?, ?, ?, ?)',
         args: [categoryId, name, isConfigurable ? 1 : 0, intervalDays, reminderWarnDays, reminderDate]
       });
-      return result.lastInsertRowid;
+      // libsql renvoie un BigInt : non sérialisable dans les params de navigation
+      return Number(result.lastInsertRowid);
     } catch (error) {
       console.error('Erreur lors de la création de l\'action:', error);
       throw error;

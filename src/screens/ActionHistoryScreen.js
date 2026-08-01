@@ -106,20 +106,20 @@ export default function ActionHistoryScreen({ route, navigation }) {
     });
   };
 
-  const handleDateChange = (event, selectedDate) => {
+  const handleDateValueChange = (event, selectedDate) => {
     const currentDate = selectedDate || tempDate;
 
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
-
-      if (event?.type === 'set') {
-        confirmDateChange(currentDate);
-      } else {
-        setSelectedEntry(null);
-      }
+      confirmDateChange(currentDate);
     } else {
       setTempDate(currentDate);
     }
+  };
+
+  const handleDatePickerDismiss = () => {
+    setShowDatePicker(false);
+    setSelectedEntry(null);
   };
 
   const confirmDateChange = async (date) => {
@@ -337,7 +337,8 @@ export default function ActionHistoryScreen({ route, navigation }) {
               value={tempDate}
               mode="date"
               display="spinner"
-              onChange={handleDateChange}
+              onValueChange={handleDateValueChange}
+              onDismiss={handleDatePickerDismiss}
             />
           </View>
         </Pressable>
@@ -348,7 +349,8 @@ export default function ActionHistoryScreen({ route, navigation }) {
           value={tempDate}
           mode="date"
           display="default"
-          onChange={handleDateChange}
+          onValueChange={handleDateValueChange}
+          onDismiss={handleDatePickerDismiss}
         />
       )}
     </View>

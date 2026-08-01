@@ -31,7 +31,8 @@ export const entryService = {
         sql: 'INSERT INTO entries (action_id, notes, field_values) VALUES (?, ?, ?)',
         args: [actionId, notes, fieldValuesJson]
       });
-      return result.lastInsertRowid;
+      // libsql renvoie un BigInt : non sérialisable dans les params de navigation
+      return Number(result.lastInsertRowid);
     } catch (error) {
       console.error('Erreur lors de la création de l\'entrée:', error);
       throw error;
