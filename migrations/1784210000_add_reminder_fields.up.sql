@@ -1,0 +1,3 @@
+ALTER TABLE actions ADD COLUMN reminder_interval_days INTEGER DEFAULT NULL;
+ALTER TABLE actions ADD COLUMN reminder_warn_days INTEGER DEFAULT NULL;
+ALTER TABLE actions ADD COLUMN reminder_date DATE DEFAULT NULL;

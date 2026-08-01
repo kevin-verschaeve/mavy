@@ -51,6 +51,27 @@ export function formatElapsedBetween(dateString1, dateString2) {
 }
 
 /**
+ * Formate un nombre de jours en durée lisible (ex: "3 jours", "2 semaines", "1 an")
+ * @param {number} days - Nombre de jours
+ * @returns {string} - La durée formatée
+ */
+export function formatDayCount(days) {
+  if (days < 1) return "aujourd'hui";
+  if (days === 1) return '1 jour';
+  if (days < 7) return `${days} jours`;
+  if (days < 30) {
+    const weeks = Math.round(days / 7);
+    return weeks === 1 ? '1 semaine' : `${weeks} semaines`;
+  }
+  if (days < 365) {
+    const months = Math.round(days / 30);
+    return months === 1 ? '1 mois' : `${months} mois`;
+  }
+  const years = days / 365;
+  return years === 1 ? '1 an' : `${Number.isInteger(years) ? years : years.toFixed(1).replace('.0', '')} ans`;
+}
+
+/**
  * Formate une date en format lisible (ex: "15 janvier 2024")
  * @param {string|Date} dateString - La date à formater
  * @returns {string} - La date formatée

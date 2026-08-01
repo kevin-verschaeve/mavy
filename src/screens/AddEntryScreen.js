@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
+import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
@@ -54,6 +55,7 @@ export default function AddEntryScreen({ route, navigation }) {
   const handleSubmit = async () => {
     try {
       await entryService.create(action.id, '', fieldValues);
+      await actionService.consumeReminderDate(action);
       showToast(`"${action.name}" enregistré`);
       navigation.goBack();
     } catch (error) {

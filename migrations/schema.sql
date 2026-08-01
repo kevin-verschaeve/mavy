@@ -4,6 +4,7 @@
 --
 
 CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE schema_migrations (id VARCHAR(255) NOT NULL PRIMARY KEY);
 CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -17,7 +18,7 @@ CREATE TABLE actions (
         category_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         is_configurable INTEGER DEFAULT 0,
-        created_at DATE DEFAULT (DATE('now')),
+        created_at DATE DEFAULT (DATE('now')), reminder_interval_days INTEGER DEFAULT NULL, reminder_warn_days INTEGER DEFAULT NULL, reminder_date DATE DEFAULT NULL,
         FOREIGN KEY (category_id) REFERENCES categories(id)
       );
 CREATE TABLE action_fields (
@@ -36,4 +37,3 @@ CREATE TABLE entries (
         created_at DATE DEFAULT (DATE('now')),
         FOREIGN KEY (action_id) REFERENCES actions(id)
       );
-CREATE TABLE schema_migrations (id VARCHAR(255) NOT NULL PRIMARY KEY);

@@ -7,11 +7,13 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { entryService } from '../services/entryService';
+import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
@@ -19,9 +21,32 @@ import { formatRelativeDate, formatElapsedBetween } from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
+function computeDueDateInfo(action, lastEntry) {
+  if (!action?.reminder_interval_days || !lastEntry?.created_at) return null;
+
+  const [y, m, d] = lastEntry.created_at.split('-').map(Number);
+  const lastDate = new Date(y, m - 1, d);
+  const dueDate = new Date(lastDate);
+  dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const daysUntilDue = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
+  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : 30;
+
+  return {
+    dueDate,
+    daysUntilDue,
+    isOverdue: daysUntilDue < 0,
+    isWarning: daysUntilDue <= warnDays,
+  };
+}
+
 export default function ActionHistoryScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
   const [entries, setEntries] = useState([]);
+  const [actionData, setActionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -31,13 +56,17 @@ export default function ActionHistoryScreen({ route, navigation }) {
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadEntries();
+    loadData();
   }, []);
 
-  const loadEntries = async () => {
+  const loadData = async () => {
     try {
-      const data = await entryService.getByAction(actionId);
+      const [data, action] = await Promise.all([
+        entryService.getByAction(actionId),
+        actionService.getById(actionId),
+      ]);
       setEntries(data);
+      setActionData(action);
     } catch (error) {
       console.error('Erreur lors du chargement de l\'historique:', error);
     } finally {
@@ -48,7 +77,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadEntries();
+    loadData();
   };
 
   const handleEditDate = (entry) => {
@@ -92,7 +121,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
       await entryService.update(selectedEntry.id, dateOnly);
       setShowDatePicker(false);
       setSelectedEntry(null);
-      loadEntries();
+      loadData();
       showToast('Date modifiée');
     } catch (error) {
       console.error('Erreur modification date:', error);
@@ -111,7 +140,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
           onPress: async () => {
             try {
               await entryService.delete(entry.id);
-              loadEntries();
+              loadData();
               showToast('Entrée supprimée');
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer l\'entrée');
@@ -141,6 +170,48 @@ export default function ActionHistoryScreen({ route, navigation }) {
         year: 'numeric'
       });
     }
+  };
+
+  const dueDateInfo = computeDueDateInfo(actionData, entries[0]);
+
+  const renderDueDateBanner = () => {
+    if (!dueDateInfo) return null;
+
+    const { dueDate, daysUntilDue, isOverdue, isWarning } = dueDateInfo;
+    const dueDateStr = dueDate.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    let icon, iconColor, bannerStyle, titleText;
+
+    if (isOverdue) {
+      icon = 'alert-circle';
+      iconColor = colors.danger;
+      bannerStyle = styles.bannerOverdue;
+      titleText = `En retard de ${Math.abs(daysUntilDue)} jour${Math.abs(daysUntilDue) > 1 ? 's' : ''}`;
+    } else if (isWarning) {
+      icon = 'alert-circle';
+      iconColor = colors.warning;
+      bannerStyle = styles.bannerWarning;
+      titleText = `Dans ${daysUntilDue} jour${daysUntilDue > 1 ? 's' : ''}`;
+    } else {
+      icon = 'calendar-outline';
+      iconColor = colors.primary;
+      bannerStyle = styles.bannerNormal;
+      titleText = `Dans ${daysUntilDue} jours`;
+    }
+
+    return (
+      <View style={[styles.banner, bannerStyle]}>
+        <Ionicons name={icon} size={22} color={iconColor} />
+        <View style={styles.bannerTextContainer}>
+          <Text style={[styles.bannerTitle, { color: iconColor }]}>{titleText}</Text>
+          <Text style={styles.bannerSubtitle}>Prochain rappel le {dueDateStr}</Text>
+        </View>
+      </View>
+    );
   };
 
   const renderEntry = ({ item, index }) => {
@@ -215,6 +286,8 @@ export default function ActionHistoryScreen({ route, navigation }) {
         onBack={() => navigation.goBack()}
       />
 
+      {renderDueDateBanner()}
+
       <FlatList
         data={entries}
         renderItem={renderEntry}
@@ -277,6 +350,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  bannerNormal: {
+    backgroundColor: colors.primaryLight + '30',
+    borderColor: colors.primaryLight,
+  },
+  bannerWarning: {
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning + '60',
+  },
+  bannerOverdue: {
+    backgroundColor: colors.dangerLight,
+    borderColor: colors.danger + '60',
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+  },
+  bannerSubtitle: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   list: {
     padding: spacing.lg,
