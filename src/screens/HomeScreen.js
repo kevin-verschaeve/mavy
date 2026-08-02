@@ -33,6 +33,7 @@ import {
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState(null);
@@ -68,13 +69,25 @@ export default function HomeScreen({ navigation }) {
 
   const loadCategories = async () => {
     try {
+      setLoadError(null);
       const data = await categoryService.getAll();
       setCategories(data);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de charger les catégories');
+      // On journalise et on affiche la vraie cause : cela permet de distinguer
+      // une config manquante, une table absente (migrations non appliquées) ou
+      // un problème réseau, plutôt qu'un message générique.
+      console.error('Erreur lors du chargement des catégories:', error);
+      const message = error?.message || 'Erreur inconnue';
+      setLoadError(message);
+      Alert.alert('Impossible de charger les catégories', message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setLoading(true);
+    loadCategories();
   };
 
   const filteredCategories = useMemo(() => {
@@ -221,6 +234,20 @@ export default function HomeScreen({ navigation }) {
 
   if (loading) {
     return <Loading message="Chargement des catégories..." />;
+  }
+
+  if (loadError && categories.length === 0) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="cloud-offline-outline" size={56} color={colors.textMuted} />
+        <Text style={styles.errorTitle}>Impossible de charger les catégories</Text>
+        <Text style={styles.errorMessage}>{loadError}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+          <Ionicons name="refresh" size={18} color={colors.textInverse} />
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -373,6 +400,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.background,
+  },
+  errorTitle: {
+    marginTop: spacing.lg,
+    fontSize: typography.sizes.lg,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    marginTop: spacing.sm,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+  },
+  retryButtonText: {
+    marginLeft: spacing.sm,
+    fontSize: typography.sizes.md,
+    fontWeight: '600',
+    color: colors.textInverse,
   },
   overlay: {
     position: 'absolute',

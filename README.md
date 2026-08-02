@@ -185,6 +185,29 @@ npm start -- --clear
 - Assurez-vous que votre téléphone et votre ordinateur sont sur le même réseau WiFi
 - Essayez le mode "Tunnel" : `npm start -- --tunnel`
 
+### « Impossible de charger les catégories » sur un build (EAS)
+Ce message signale une **erreur de connexion/requête**, pas une base vide (une
+base vide renvoie simplement une liste vide, sans erreur). L'app affiche
+désormais la cause exacte dans l'alerte et l'écran d'erreur. Les deux causes
+fréquentes en production :
+
+1. **Variables Turso absentes du build.** `app.config.js` lit `TURSO_URL` /
+   `TURSO_AUTH_TOKEN`, qui pointent (via `eas.json`) vers les variables EAS
+   `TURSO_URL_PROD` / `TURSO_TOKEN_PROD`. Vérifiez qu'elles existent :
+   ```bash
+   eas env:list --environment production
+   # au besoin :
+   eas env:create --environment production --name TURSO_URL_PROD --value "libsql://..."
+   eas env:create --environment production --name TURSO_TOKEN_PROD --value "eyJ..." --type secret
+   ```
+   Le message « Configuration Turso manquante » confirme ce cas.
+
+2. **Migrations non appliquées sur la base de prod.** Si l'erreur ressemble à
+   `no such table: categories`, la base de production n'a jamais été migrée :
+   ```bash
+   npm run migration:prod
+   ```
+
 ## 📊 Base de données
 
 ### Structure des tables
