@@ -169,6 +169,64 @@ npm run web
 
 # Nettoyer le cache
 npm start -- --clear
+
+# Build de production (APK Android via EAS)
+eas build --platform android --profile production
+```
+
+## 📦 Build de production
+
+Les builds sont réalisés avec **EAS Build** (Expo Application Services). Les profils sont définis dans `eas.json`.
+
+### Prérequis
+
+```bash
+# Installer EAS CLI (>= 16.32.0)
+npm install -g eas-cli
+
+# Se connecter à son compte Expo
+eas login
+```
+
+### Configurer les secrets Turso
+
+Le profil `production` utilise les variables d'environnement `TURSO_URL_PROD` et `TURSO_TOKEN_PROD`. Elles doivent exister côté EAS :
+
+```bash
+eas env:create --name TURSO_URL_PROD --scope project
+eas env:create --name TURSO_TOKEN_PROD --scope project --type secret
+```
+
+### Lancer le build
+
+```bash
+# Build de production Android (APK)
+eas build --platform android --profile production
+```
+
+Le profil `production` :
+- génère un **APK** Android
+- incrémente automatiquement le numéro de version (`autoIncrement: true`, versions gérées côté EAS via `appVersionSource: "remote"`)
+- injecte les variables Turso de **production**
+
+À la fin du build, EAS affiche une URL de téléchargement de l'APK.
+
+### Autres profils disponibles
+
+```bash
+# Development client (dev, base Turso de dev)
+eas build --platform android --profile development
+
+# Preview : APK de test avec la base Turso de prod
+eas build --platform android --profile preview
+```
+
+### Migrations de base de données
+
+Avant un déploiement en production, appliquez les migrations sur la base prod :
+
+```bash
+npm run migration:prod
 ```
 
 ## 🐛 Dépannage
