@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.16"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="rad" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#7c74ff"/><stop offset="1" stop-color="#4f46e5"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#rad)"/><rect width="1024" height="1024" rx="230" fill="url(#sheen)"/>
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#fff" stroke-opacity="0.22" stroke-width="26"/>
+  <circle cx="512" cy="512" r="216" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-width="30"/>
+  <circle cx="512" cy="512" r="132" fill="none" stroke="#fff" stroke-opacity="1" stroke-width="34"/>
+  <circle cx="512" cy="512" r="64" fill="#f97316"/>
+</svg>
