@@ -9,7 +9,7 @@ export default {
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff'
+      backgroundColor: '#1c1917'
     },
     ios: {
       supportsTablet: true
@@ -17,7 +17,7 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#ffffff'
+        backgroundColor: '#1c1917'
       },
       edgeToEdgeEnabled: true,
       package: 'com.keversc.mavy'
