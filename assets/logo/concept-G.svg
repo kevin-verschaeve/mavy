@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.06"/><stop offset="0.55" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="#1c1917"/><rect width="1024" height="1024" rx="230" fill="url(#sheen)"/>
+  <path d="M512 372
+    C414 372 378 470 374 560
+    C372 588 364 600 352 612
+    L672 612
+    C660 600 652 588 650 560
+    C646 470 610 372 512 372 Z" fill="#faf9f7"/>
+  <circle cx="512" cy="360" r="30" fill="#faf9f7"/>
+  <circle cx="512" cy="650" r="34" fill="#faf9f7"/>
+  <circle cx="672" cy="368" r="86" fill="#1c1917"/>
+  <circle cx="672" cy="368" r="58" fill="#10b981"/>
+</svg>
