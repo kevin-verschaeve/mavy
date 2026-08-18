@@ -43,3 +43,6 @@ yarn-error.*
 # Turso credentials - KEEP SECRET!
 .env
 .turso/
+
+# local working notes
+AUDIT.md

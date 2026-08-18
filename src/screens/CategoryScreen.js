@@ -22,6 +22,7 @@ import Header from '../components/Header';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
+import { toISODate, parseISODate } from '../utils/dateUtils';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 const INTERVAL_PRESETS = [
@@ -49,18 +50,6 @@ function getFinalIntervalDays(reminderDays, customDays) {
   if (reminderDays === null) return null;
   if (reminderDays === 'custom') return parseInt(customDays) || null;
   return reminderDays;
-}
-
-function toISODate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function parseISODate(dateString) {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d);
 }
 
 function formatFullDate(date) {

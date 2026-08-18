@@ -1,15 +1,10 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { formatRelativeDate, formatDayCount, formatShortDate } from '../utils/dateUtils';
+import { formatRelativeDate, formatDayCount, formatShortDate, parseISODate } from '../utils/dateUtils';
 import { colors, statusColors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function parseLocalDate(dateString) {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
 
 function statusFromDaysUntilDue(daysUntilDue, warnDays) {
   if (daysUntilDue < 0) return 'overdue';
@@ -34,8 +29,8 @@ export function computeReminder(action, lastEntry) {
 
   // Rappel à date fixe : one-shot, consommé par une entrée postérieure à l'échéance
   if (action.reminder_date) {
-    const dueDate = parseLocalDate(action.reminder_date);
-    if (lastEntry?.created_at && parseLocalDate(lastEntry.created_at) >= dueDate) {
+    const dueDate = parseISODate(action.reminder_date);
+    if (lastEntry?.created_at && parseISODate(lastEntry.created_at) >= dueDate) {
       return { status: null, dueLabel: null, everyLabel: null };
     }
     const daysUntilDue = Math.round((dueDate - today) / MS_PER_DAY);
@@ -59,7 +54,7 @@ export function computeReminder(action, lastEntry) {
     return { status: 'ok', dueLabel: null, everyLabel };
   }
 
-  const daysSince = Math.floor((today - parseLocalDate(lastEntry.created_at)) / MS_PER_DAY);
+  const daysSince = Math.floor((today - parseISODate(lastEntry.created_at)) / MS_PER_DAY);
   const daysUntilDue = intervalDays - daysSince;
   return {
     status: statusFromDaysUntilDue(daysUntilDue, warnDays),

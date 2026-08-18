@@ -3,6 +3,31 @@
  */
 
 /**
+ * Convertit une Date en chaîne `YYYY-MM-DD` dans le fuseau **local**.
+ * Ne pas utiliser `toISOString()` ici : il convertit en UTC et décale la date
+ * d'un jour pour tout ce qui est saisi le soir en France (UTC+1/+2).
+ * @param {Date} date - La date à convertir
+ * @returns {string} - La date au format `YYYY-MM-DD`
+ */
+export function toISODate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Parse une chaîne `YYYY-MM-DD` en Date à minuit dans le fuseau **local**.
+ * `new Date('2026-03-15')` serait interprété en UTC : on décompose à la main.
+ * @param {string} dateString - La date au format `YYYY-MM-DD`
+ * @returns {Date} - La date à minuit local
+ */
+export function parseISODate(dateString) {
+  const [y, m, d] = dateString.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
  * Formate une date en texte relatif (Aujourd'hui, Hier, Il y a X jours, etc.)
  * @param {string|Date} dateString - La date à formater
  * @returns {string} - La date formatée en texte relatif

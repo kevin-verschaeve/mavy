@@ -17,16 +17,11 @@ import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
-import { formatRelativeDate, formatElapsedBetween, formatDayCount } from '../utils/dateUtils';
+import { formatRelativeDate, formatElapsedBetween, formatDayCount, toISODate, parseISODate } from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, statusColors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function parseLocalDate(dateString) {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
 
 // Échéance du prochain rappel, qu'il soit périodique (court depuis la dernière
 // entrée) ou à date fixe. Retourne null quand aucun rappel n'est configuré.
@@ -39,11 +34,11 @@ function computeDueDateInfo(action, lastEntry) {
 
   let dueDate;
   if (action.reminder_date) {
-    dueDate = parseLocalDate(action.reminder_date);
+    dueDate = parseISODate(action.reminder_date);
     // Rappel one-shot déjà honoré par une entrée postérieure
-    if (lastEntry?.created_at && parseLocalDate(lastEntry.created_at) >= dueDate) return null;
+    if (lastEntry?.created_at && parseISODate(lastEntry.created_at) >= dueDate) return null;
   } else if (action.reminder_interval_days && lastEntry?.created_at) {
-    dueDate = parseLocalDate(lastEntry.created_at);
+    dueDate = parseISODate(lastEntry.created_at);
     dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
   } else {
     return null;
@@ -129,7 +124,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
     }
 
     try {
-      const dateOnly = date.toISOString().split('T')[0];
+      const dateOnly = toISODate(date);
       await entryService.update(selectedEntry.id, dateOnly);
       setShowDatePicker(false);
       setSelectedEntry(null);
