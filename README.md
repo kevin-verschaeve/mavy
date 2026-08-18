@@ -106,6 +106,41 @@ Un QR code s'affichera dans votre terminal.
 
 3. L'application se lancera automatiquement ! 🎉
 
+> ⚠️ **Les rappels ne fonctionnent pas dans Expo Go.** Les notifications locales en
+> ont été retirées sur Android depuis le SDK 53, et la tâche de fond demande du code
+> natif. L'app se lance normalement — les rappels sont simplement inactifs. Pour les
+> tester, il faut un *development build* (voir ci-dessous).
+
+## 🔔 Rappels et notifications
+
+Chaque action dotée d'un rappel programme deux notifications locales, envoyées à **9h**
+heure locale :
+
+- une à l'entrée dans la **fenêtre d'alerte** (échéance moins `reminder_warn_days`) ;
+- une le **jour de l'échéance**.
+
+Une action déjà en retard reçoit un rappel de rattrapage au prochain créneau de 9h.
+Un rappel à date fixe s'éteint dès qu'une entrée tombe dans sa fenêtre d'alerte.
+
+Les notifications sont **entièrement locales** : rien n'est envoyé depuis un serveur.
+Elles sont donc recalculées et reprogrammées à chaque ouverture de l'app et à chaque
+retour au premier plan, ainsi que par une tâche de fond (environ toutes les 12 h, quand
+le système l'autorise — iOS reste imprévisible sur ce point). En pratique : ouvrir l'app
+de temps en temps garantit des rappels à jour.
+
+iOS ne conserve que les 64 notifications programmées les plus proches ; au-delà, les
+plus lointaines sont tronquées volontairement et reprogrammées plus tard.
+
+### Tester les rappels (development build)
+
+```bash
+# Build de développement, à installer sur l'appareil
+eas build --profile development --platform android
+```
+
+Puis `npm start` et connectez le build au serveur de développement. Autorisez les
+notifications à la première ouverture : sans permission, aucun rappel n'est programmé.
+
 ## 📱 Utilisation
 
 ### Première utilisation
@@ -140,7 +175,12 @@ mavy/
 │   ├── services/
 │   │   ├── categoryService.js # Gestion des catégories
 │   │   ├── actionService.js   # Gestion des actions
-│   │   └── entryService.js    # Gestion des entrées
+│   │   ├── entryService.js    # Gestion des entrées
+│   │   ├── notificationService.js # Planification des rappels locaux
+│   │   └── backgroundRefresh.js   # Replanification en arrière-plan
+│   ├── hooks/
+│   │   ├── useReminderNotifications.js # Replanification à l'ouverture
+│   │   └── useNotificationNavigation.js # Tap sur une notif → catégorie
 │   ├── screens/
 │   │   ├── HomeScreen.js      # Liste des catégories
 │   │   ├── CategoryScreen.js  # Actions d'une catégorie

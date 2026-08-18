@@ -21,42 +21,30 @@ import {
   formatElapsedBetween,
   formatDayCount,
   toISODate,
-  parseISODate,
-  entrySatisfiesReminderDate,
-  DEFAULT_WARN_DAYS,
+  computeDueDate,
+  MS_PER_DAY,
 } from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, statusColors, spacing, typography, borderRadius, shadows } from '../constants/theme';
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
 // Échéance du prochain rappel, qu'il soit périodique (court depuis la dernière
 // entrée) ou à date fixe. Retourne null quand aucun rappel n'est configuré.
+// Le calcul lui-même vit dans `dateUtils.computeDueDate`, partagé avec les cartes
+// (`ActionButton`) et la planification des notifications : cet écran ne fait plus
+// que mettre en forme, pour que les trois ne puissent pas diverger.
 function computeDueDateInfo(action, lastEntry) {
   if (!action) return null;
 
+  const due = computeDueDate(action, lastEntry?.created_at);
+  if (!due) return null;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS;
 
-  let dueDate;
-  if (action.reminder_date) {
-    dueDate = parseISODate(action.reminder_date);
-    // Rappel one-shot déjà honoré par une entrée tombant dans la fenêtre d'alerte
-    if (entrySatisfiesReminderDate(action.reminder_date, lastEntry?.created_at, action.reminder_warn_days)) {
-      return null;
-    }
-  } else if (action.reminder_interval_days && lastEntry?.created_at) {
-    dueDate = parseISODate(lastEntry.created_at);
-    dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
-  } else {
-    return null;
-  }
+  const daysUntilDue = Math.round((due.dueDate - today) / MS_PER_DAY);
+  const status = daysUntilDue < 0 ? 'overdue' : daysUntilDue <= due.warnDays ? 'warning' : 'ok';
 
-  const daysUntilDue = Math.round((dueDate - today) / MS_PER_DAY);
-  const status = daysUntilDue < 0 ? 'overdue' : daysUntilDue <= warnDays ? 'warning' : 'ok';
-
-  return { dueDate, daysUntilDue, status };
+  return { dueDate: due.dueDate, daysUntilDue, status };
 }
 
 export default function ActionHistoryScreen({ route, navigation }) {

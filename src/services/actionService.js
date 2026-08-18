@@ -29,6 +29,47 @@ export const actionService = {
     }
   },
 
+  // Récupérer, en une seule requête, toutes les actions à rappel de l'utilisateur
+  // avec leur dernière entrée. Sert à planifier les notifications sans parcourir
+  // catégorie par catégorie (cf. le N+1 de `getByCategory` + `getLastEntry`).
+  // Chaque ligne porte aussi le nom de la catégorie, pour le corps de la notif.
+  async getAllWithReminders() {
+    const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
+    try {
+      const result = await db.execute({
+        sql: `
+          SELECT
+            a.id,
+            a.name,
+            a.category_id,
+            a.reminder_interval_days,
+            a.reminder_warn_days,
+            a.reminder_date,
+            c.name AS category_name,
+            MAX(e.created_at) AS last_entry_at
+          FROM actions a
+          JOIN categories c ON a.category_id = c.id
+          LEFT JOIN entries e ON e.action_id = a.id
+          WHERE c.user_id = ?
+            AND (a.reminder_date IS NOT NULL OR a.reminder_interval_days IS NOT NULL)
+          GROUP BY a.id
+          ORDER BY a.name
+        `,
+        args: [userId]
+      });
+      return result.rows;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des rappels:', error);
+      throw error;
+    }
+  },
+
   // Créer une nouvelle action (la catégorie doit appartenir à l'utilisateur)
   async create(categoryId, name, isConfigurable = false, reminderIntervalDays = null, reminderWarnDays = null, reminderDate = null) {
     const db = getTursoClient();

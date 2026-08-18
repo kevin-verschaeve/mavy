@@ -5,13 +5,10 @@ import {
   formatRelativeDate,
   formatDayCount,
   formatShortDate,
-  parseISODate,
-  entrySatisfiesReminderDate,
-  DEFAULT_WARN_DAYS,
+  computeDueDate,
+  MS_PER_DAY,
 } from '../utils/dateUtils';
 import { colors, statusColors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
-
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 function statusFromDaysUntilDue(daysUntilDue, warnDays) {
   if (daysUntilDue < 0) return 'overdue';
@@ -32,19 +29,20 @@ function formatDueLabel(daysUntilDue) {
 export function computeReminder(action, lastEntry) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS;
 
-  // Rappel à date fixe : one-shot, consommé par une entrée tombant dans la fenêtre d'alerte
+  // `computeDueDate` porte le calcul d'échéance, partagé avec la planification
+  // des notifications : les cartes et les rappels doivent dire la même chose.
+  const due = computeDueDate(action, lastEntry?.created_at);
+
   if (action.reminder_date) {
-    const dueDate = parseISODate(action.reminder_date);
-    if (entrySatisfiesReminderDate(action.reminder_date, lastEntry?.created_at, action.reminder_warn_days)) {
-      return { status: null, dueLabel: null, everyLabel: null };
-    }
-    const daysUntilDue = Math.round((dueDate - today) / MS_PER_DAY);
+    // Rappel à date fixe consommé : plus rien à afficher
+    if (!due) return { status: null, dueLabel: null, everyLabel: null };
+
+    const daysUntilDue = Math.round((due.dueDate - today) / MS_PER_DAY);
     return {
-      status: statusFromDaysUntilDue(daysUntilDue, warnDays),
+      status: statusFromDaysUntilDue(daysUntilDue, due.warnDays),
       dueLabel: formatDueLabel(daysUntilDue),
-      everyLabel: formatShortDate(dueDate),
+      everyLabel: formatShortDate(due.dueDate),
     };
   }
 
@@ -52,19 +50,16 @@ export function computeReminder(action, lastEntry) {
     return { status: null, dueLabel: null, everyLabel: null };
   }
 
-  // Rappel périodique : l'échéance court depuis la dernière entrée
-  const intervalDays = Number(action.reminder_interval_days);
-  const everyLabel = `Tous les ${formatDayCount(intervalDays)}`;
+  const everyLabel = `Tous les ${formatDayCount(Number(action.reminder_interval_days))}`;
 
   // Sans entrée, la périodicité est connue mais l'échéance ne l'est pas
-  if (!lastEntry?.created_at) {
+  if (!due) {
     return { status: 'ok', dueLabel: null, everyLabel };
   }
 
-  const daysSince = Math.floor((today - parseISODate(lastEntry.created_at)) / MS_PER_DAY);
-  const daysUntilDue = intervalDays - daysSince;
+  const daysUntilDue = Math.round((due.dueDate - today) / MS_PER_DAY);
   return {
-    status: statusFromDaysUntilDue(daysUntilDue, warnDays),
+    status: statusFromDaysUntilDue(daysUntilDue, due.warnDays),
     dueLabel: formatDueLabel(daysUntilDue),
     everyLabel,
   };

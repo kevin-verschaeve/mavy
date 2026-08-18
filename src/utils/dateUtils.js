@@ -56,6 +56,48 @@ export function entrySatisfiesReminderDate(reminderDate, entryDate, warnDays) {
   return entry >= windowStart;
 }
 
+/** Millisecondes dans une journée. */
+export const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+/**
+ * Calcule l'échéance d'une action, sans la mettre en forme.
+ * Source unique de vérité partagée par les cartes (`computeReminder`) et par la
+ * planification des notifications : les deux doivent toujours dire la même chose.
+ * @param {object} action - L'action, avec ses colonnes `reminder_*`
+ * @param {string|Date|null} lastEntryDate - La date de la dernière entrée
+ * @returns {{dueDate: Date, warnDate: Date, warnDays: number, isFixed: boolean}|null}
+ *   `null` si l'action n'a pas de rappel, ou si un rappel à date fixe est déjà consommé,
+ *   ou si un rappel périodique n'a encore aucune entrée d'où partir.
+ */
+export function computeDueDate(action, lastEntryDate) {
+  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS;
+
+  let dueDate = null;
+
+  if (action.reminder_date) {
+    // Rappel à date fixe : one-shot, éteint dès qu'une entrée tombe dans la fenêtre
+    if (entrySatisfiesReminderDate(action.reminder_date, lastEntryDate, action.reminder_warn_days)) {
+      return null;
+    }
+    dueDate = parseISODate(action.reminder_date);
+  } else if (action.reminder_interval_days && lastEntryDate) {
+    // Rappel périodique : l'échéance court depuis la dernière entrée.
+    // `created_at` peut être une date seule : passer par le parseur local évite
+    // le décalage d'un jour qu'introduirait `new Date('YYYY-MM-DD')` (lu en UTC).
+    dueDate = typeof lastEntryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(lastEntryDate)
+      ? parseISODate(lastEntryDate)
+      : parseISODate(toISODate(new Date(lastEntryDate)));
+    dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
+  } else {
+    return null;
+  }
+
+  const warnDate = new Date(dueDate);
+  warnDate.setDate(warnDate.getDate() - warnDays);
+
+  return { dueDate, warnDate, warnDays, isFixed: Boolean(action.reminder_date) };
+}
+
 /**
  * Formate une date en texte relatif (Aujourd'hui, Hier, Il y a X jours, etc.)
  * @param {string|Date} dateString - La date à formater

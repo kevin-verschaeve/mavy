@@ -26,7 +26,9 @@ export default {
       favicon: './assets/favicon.png'
     },
     plugins: [
-      '@react-native-community/datetimepicker'
+      '@react-native-community/datetimepicker',
+      'expo-notifications',
+      'expo-background-task'
     ],
     extra: {
       eas: {

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UserProvider, useUser } from './src/contexts/UserContext';
 import { ToastProvider } from './src/components/Toast';
+import { useReminderNotifications } from './src/hooks/useReminderNotifications';
+import { useNotificationNavigation } from './src/hooks/useNotificationNavigation';
 import { colors, spacing, typography } from './src/constants/theme';
 import ProfileSelectionScreen from './src/screens/ProfileSelectionScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -55,6 +57,11 @@ function HomeStack() {
 
 function AppContent() {
   const { userId, isLoading, refreshUser } = useUser();
+  const navigationRef = useRef(null);
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
+
+  useReminderNotifications(userId);
+  useNotificationNavigation(navigationRef, isNavigationReady);
 
   if (isLoading) {
     return (
@@ -71,7 +78,10 @@ function AppContent() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => setIsNavigationReady(true)}
+    >
       <HomeStack />
     </NavigationContainer>
   );
