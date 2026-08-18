@@ -22,7 +22,7 @@ import Header from '../components/Header';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
-import { toISODate, parseISODate } from '../utils/dateUtils';
+import { toISODate, parseISODate, DEFAULT_WARN_DAYS } from '../utils/dateUtils';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 const INTERVAL_PRESETS = [
@@ -380,7 +380,7 @@ export default function CategoryScreen({ route, navigation }) {
       setReminderCustomDays('');
     }
 
-    setReminderWarnDays(action.reminder_warn_days ? Number(action.reminder_warn_days) : 30);
+    setReminderWarnDays(action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS);
   };
 
   const handleSaveReminder = async () => {

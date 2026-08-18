@@ -17,7 +17,15 @@ import { actionService } from '../services/actionService';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
-import { formatRelativeDate, formatElapsedBetween, formatDayCount, toISODate, parseISODate } from '../utils/dateUtils';
+import {
+  formatRelativeDate,
+  formatElapsedBetween,
+  formatDayCount,
+  toISODate,
+  parseISODate,
+  entrySatisfiesReminderDate,
+  DEFAULT_WARN_DAYS,
+} from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, statusColors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
 
@@ -30,13 +38,15 @@ function computeDueDateInfo(action, lastEntry) {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : 30;
+  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS;
 
   let dueDate;
   if (action.reminder_date) {
     dueDate = parseISODate(action.reminder_date);
-    // Rappel one-shot déjà honoré par une entrée postérieure
-    if (lastEntry?.created_at && parseISODate(lastEntry.created_at) >= dueDate) return null;
+    // Rappel one-shot déjà honoré par une entrée tombant dans la fenêtre d'alerte
+    if (entrySatisfiesReminderDate(action.reminder_date, lastEntry?.created_at, action.reminder_warn_days)) {
+      return null;
+    }
   } else if (action.reminder_interval_days && lastEntry?.created_at) {
     dueDate = parseISODate(lastEntry.created_at);
     dueDate.setDate(dueDate.getDate() + Number(action.reminder_interval_days));
@@ -74,8 +84,10 @@ export default function ActionHistoryScreen({ route, navigation }) {
       ]);
       setEntries(data);
       setActionData(action);
+      return { entries: data, action };
     } catch (error) {
       console.error('Erreur lors du chargement de l\'historique:', error);
+      return null;
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -128,7 +140,20 @@ export default function ActionHistoryScreen({ route, navigation }) {
       await entryService.update(selectedEntry.id, dateOnly);
       setShowDatePicker(false);
       setSelectedEntry(null);
-      loadData();
+
+      // La date modifiée peut faire entrer l'entrée dans la fenêtre d'alerte :
+      // on rejoue la consommation du rappel, sur la dernière entrée rechargée
+      // (éditer une entrée ancienne ne doit pas consommer à la place de la plus récente).
+      const reloaded = await loadData();
+      const lastEntry = reloaded?.entries?.[0];
+      if (reloaded?.action?.reminder_date && lastEntry?.created_at) {
+        const consumed = await actionService.consumeReminderDate(
+          reloaded.action,
+          lastEntry.created_at
+        );
+        if (consumed) await loadData();
+      }
+
       showToast('Date modifiée');
     } catch (error) {
       console.error('Erreur modification date:', error);

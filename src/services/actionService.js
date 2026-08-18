@@ -1,5 +1,6 @@
 import { getTursoClient } from '../config/turso';
 import { getCurrentUserId } from './userService';
+import { entrySatisfiesReminderDate } from '../utils/dateUtils';
 
 export const actionService = {
   // Récupérer toutes les actions d'une catégorie (filtrées par user_id via la catégorie)
@@ -146,22 +147,23 @@ export const actionService = {
   },
 
   // À appeler après chaque nouvelle entrée : un rappel à date fixe est un one-shot,
-  // consommé dès qu'une entrée atteint l'échéance. Sans effet sur les rappels périodiques.
-  async consumeReminderDate(action) {
+  // consommé dès qu'une entrée tombe dans la fenêtre d'alerte (faire l'action en
+  // avance doit éteindre le rappel). Sans effet sur les rappels périodiques.
+  async consumeReminderDate(action, entryDate = new Date()) {
     if (!action?.reminder_date) return false;
 
-    const [y, m, d] = action.reminder_date.split('-').map(Number);
-    const dueDate = new Date(y, m - 1, d);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (today < dueDate) return false;
+    if (!entrySatisfiesReminderDate(action.reminder_date, entryDate, action.reminder_warn_days)) {
+      return false;
+    }
 
     await this.clearReminderDate(action.id);
     return true;
   },
 
-  // Consommer un rappel à date fixe : one-shot, effacé dès qu'une entrée le satisfait
+  // Consommer un rappel à date fixe : one-shot, effacé dès qu'une entrée le satisfait.
+  // L'effacement est définitif : `reminder_date` est mis à NULL, donc ramener plus tard
+  // une entrée à une date antérieure ne ressuscite pas le rappel. Choix assumé — le
+  // rendre réversible demanderait de conserver la date et d'ajouter un flag `consumed`.
   async clearReminderDate(id) {
     const db = getTursoClient();
     const userId = await getCurrentUserId();

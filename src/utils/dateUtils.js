@@ -27,6 +27,35 @@ export function parseISODate(dateString) {
   return new Date(y, m - 1, d);
 }
 
+/** Fenêtre d'alerte par défaut, en jours, quand l'action n'en définit pas. */
+export const DEFAULT_WARN_DAYS = 30;
+
+/**
+ * Un rappel à date fixe est satisfait dès qu'une entrée tombe dans sa fenêtre
+ * d'alerte : faire son contrôle technique deux semaines en avance doit éteindre
+ * le rappel, pas le laisser en « warning » jusqu'à l'échéance théorique.
+ * @param {string} reminderDate - L'échéance au format `YYYY-MM-DD`
+ * @param {string|Date} entryDate - La date de l'entrée
+ * @param {number|string|null} warnDays - La fenêtre d'alerte de l'action
+ * @returns {boolean} - `true` si l'entrée consomme le rappel
+ */
+export function entrySatisfiesReminderDate(reminderDate, entryDate, warnDays) {
+  if (!reminderDate || !entryDate) return false;
+
+  const dueDate = parseISODate(reminderDate);
+  const windowStart = new Date(dueDate);
+  windowStart.setDate(windowStart.getDate() - (warnDays ? Number(warnDays) : DEFAULT_WARN_DAYS));
+
+  // `created_at` peut être une date seule (`YYYY-MM-DD`) : `new Date()` la lirait
+  // en UTC et la décalerait d'un jour. On repasse par le parseur local.
+  const entry = typeof entryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entryDate)
+    ? parseISODate(entryDate)
+    : new Date(entryDate);
+  entry.setHours(0, 0, 0, 0);
+
+  return entry >= windowStart;
+}
+
 /**
  * Formate une date en texte relatif (Aujourd'hui, Hier, Il y a X jours, etc.)
  * @param {string|Date} dateString - La date à formater

@@ -1,7 +1,14 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { formatRelativeDate, formatDayCount, formatShortDate, parseISODate } from '../utils/dateUtils';
+import {
+  formatRelativeDate,
+  formatDayCount,
+  formatShortDate,
+  parseISODate,
+  entrySatisfiesReminderDate,
+  DEFAULT_WARN_DAYS,
+} from '../utils/dateUtils';
 import { colors, statusColors, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -25,12 +32,12 @@ function formatDueLabel(daysUntilDue) {
 export function computeReminder(action, lastEntry) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : 30;
+  const warnDays = action.reminder_warn_days ? Number(action.reminder_warn_days) : DEFAULT_WARN_DAYS;
 
-  // Rappel à date fixe : one-shot, consommé par une entrée postérieure à l'échéance
+  // Rappel à date fixe : one-shot, consommé par une entrée tombant dans la fenêtre d'alerte
   if (action.reminder_date) {
     const dueDate = parseISODate(action.reminder_date);
-    if (lastEntry?.created_at && parseISODate(lastEntry.created_at) >= dueDate) {
+    if (entrySatisfiesReminderDate(action.reminder_date, lastEntry?.created_at, action.reminder_warn_days)) {
       return { status: null, dueLabel: null, everyLabel: null };
     }
     const daysUntilDue = Math.round((dueDate - today) / MS_PER_DAY);
