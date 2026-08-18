@@ -50,14 +50,32 @@ turso db tokens create mavy
 
 ### 3. Configuration de l'application
 
-Ouvrez le fichier `src/config/turso.js` et remplacez les valeurs par les vôtres :
+**N'écrivez jamais vos identifiants dans `src/config/turso.js`** : ce fichier est versionné,
+et un token committé reste dans l'historique git même après suppression. Les identifiants
+passent par un fichier `.env.local`, ignoré par git.
 
-```javascript
-export const tursoConfig = {
-  url: 'libsql://mavy-votre-nom.turso.io', // Votre URL Turso
-  authToken: 'eyJ...' // Votre token Turso
-};
+Créez `.env.local` à la racine du projet :
+
+```bash
+# Lues par l'app (via src/config/turso.js)
+EXPO_PUBLIC_TURSO_DATABASE_URL=libsql://mavy-votre-nom.turso.io
+EXPO_PUBLIC_TURSO_AUTH_TOKEN=eyJ...
+
+# Lues par l'outil de migration (npm run migration:dev)
+DATABASE_URL=libsql://mavy-votre-nom.turso.io
+DATABASE_TOKEN=eyJ...
 ```
+
+Les deux paires reprennent les mêmes valeurs : elles servent deux outils distincts, l'app
+d'un côté et `geni` (migrations) de l'autre.
+
+`.gitignore` couvre déjà `.env` et `.env*.local`. Vérifiez avant tout commit que votre
+fichier n'apparaît pas dans `git status`.
+
+> En build EAS, ce ne sont pas ces variables qui sont utilisées mais les secrets EAS
+> (`TURSO_URL_PROD` / `TURSO_TOKEN_PROD`), injectés via `app.config.js` — voir
+> [Build de production](#-build-de-production). Notez que le token se retrouve alors dans
+> l'APK : lisez la section [Modèle de sécurité](#-modèle-de-sécurité).
 
 ### 4. Installation des dépendances
 
@@ -232,7 +250,13 @@ npm run migration:prod
 ## 🐛 Dépannage
 
 ### Erreur "Impossible d'initialiser la base de données"
-- Vérifiez que vous avez bien rempli `url` et `authToken` dans `src/config/turso.js`
+- En développement : vérifiez que `.env.local` existe et définit bien
+  `EXPO_PUBLIC_TURSO_DATABASE_URL` et `EXPO_PUBLIC_TURSO_AUTH_TOKEN` (voir
+  [Configuration de l'application](#3-configuration-de-lapplication))
+- Redémarrez avec `npm start` (le script force `--clear`) : les variables d'environnement
+  sont lues au démarrage du bundler, pas à chaud
+- Sur un build EAS, le message « Configuration Turso manquante » désigne des secrets EAS
+  absents — voir la section de dépannage plus bas
 - Vérifiez que votre token Turso est valide : `turso db tokens list mavy`
 
 ### L'app ne se connecte pas à Turso
@@ -311,6 +335,56 @@ SELECT * FROM entries ORDER BY created_at DESC LIMIT 10;
 - [ ] Ajout de notes aux entrées
 - [ ] Photos attachées aux entrées
 - [ ] Filtres dans l'historique
+
+## 🔐 Modèle de sécurité
+
+**Le token Turso est embarqué en clair dans l'APK. C'est un choix assumé, pas un oubli.**
+
+`app.config.js` injecte `TURSO_URL` / `TURSO_AUTH_TOKEN` dans `extra`, qui finit dans le
+bundle JavaScript. Quiconque récupère l'APK peut en extraire le token et obtient alors un
+accès **lecture et écriture complet** à la base — donc aux données des deux profils.
+
+Il n'y a pas de moyen de cacher un secret dans une app mobile : toute valeur nécessaire au
+client peut être extraite du binaire. Seul un backend proxy détenant le token supprimerait
+réellement le problème. Ce n'est pas justifié ici.
+
+### Pourquoi c'est acceptable dans ce cas
+
+- App **familiale et privée** : elle n'est ni publiée sur un store, ni distribuée hors du
+  cercle de ses deux utilisateurs.
+- Les données sont **sans enjeu** : des dates d'entretien de voiture et de rendez-vous chez
+  le coiffeur. Ni identifiants, ni données bancaires, ni données de santé.
+- Le rayon de fuite est **limité à cette base**, qui ne sert qu'à cette app.
+
+### Ce qui rendrait ce choix caduc
+
+Si l'une de ces situations se présente, il faut passer à un backend proxy :
+
+- l'APK est publié sur un store ou diffusé hors du cercle familial ;
+- des données sensibles (santé, finances, identifiants) sont ajoutées à l'app ;
+- le nombre de profils dépasse le cadre familial.
+
+### Rotation du token
+
+À faire dès qu'un APK a pu fuiter (téléphone perdu, APK envoyé à un tiers, partage par
+erreur), et par hygiène de temps en temps :
+
+```bash
+# 1. Créer un nouveau token
+turso db tokens create mavy
+
+# 2. Révoquer TOUS les anciens tokens de la base
+turso db tokens invalidate mavy
+
+# 3. Mettre à jour les secrets EAS
+eas env:update --environment production --name TURSO_TOKEN_PROD
+
+# 4. Rebuild et réinstaller : les anciens APK ne fonctionnent plus
+eas build --platform android --profile production
+```
+
+L'étape 2 casse volontairement toutes les installations existantes : c'est le but. Après une
+rotation, chaque téléphone doit réinstaller l'APK à jour.
 
 ## 📝 Licence
 
