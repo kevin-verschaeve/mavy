@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { actionFieldService } from '../services/actionFieldService';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';

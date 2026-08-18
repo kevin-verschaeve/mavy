@@ -126,22 +126,6 @@ export function formatDayCount(days) {
 }
 
 /**
- * Formate une date en format lisible (ex: "15 janvier 2024")
- * @param {string|Date} dateString - La date à formater
- * @returns {string} - La date formatée
- */
-export function formatDate(dateString) {
-  if (!dateString) return '';
-
-  const date = new Date(dateString);
-  return date.toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-/**
  * Formate une date en format court (ex: "15/01/2024")
  * @param {string|Date} dateString - La date à formater
  * @returns {string} - La date formatée
@@ -151,22 +135,4 @@ export function formatShortDate(dateString) {
 
   const date = new Date(dateString);
   return date.toLocaleDateString('fr-FR');
-}
-
-/**
- * Formate une date avec l'heure (ex: "15 janvier 2024 à 14:30")
- * @param {string|Date} dateString - La date à formater
- * @returns {string} - La date et l'heure formatées
- */
-export function formatDateTime(dateString) {
-  if (!dateString) return '';
-
-  const date = new Date(dateString);
-  return date.toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }

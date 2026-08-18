@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, Animated } from 'react-native';
+import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../constants/theme';
 
 export default function Input({

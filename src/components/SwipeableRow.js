@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Animated,
   PanResponder,
@@ -9,7 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, touchTargets, gradients, borderRadius } from '../constants/theme';
+import { colors, spacing, touchTargets, gradients, borderRadius } from '../constants/theme';
 
 const SWIPE_THRESHOLD = 80;
 const DELETE_BUTTON_WIDTH = 70;

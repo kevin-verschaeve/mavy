@@ -166,10 +166,4 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     textAlign: 'center',
   },
-  footerHint: {
-    fontSize: typography.sizes.sm,
-    color: colors.warmGray500,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
 });

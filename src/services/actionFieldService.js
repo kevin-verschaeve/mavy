@@ -60,20 +60,5 @@ export const actionFieldService = {
       console.error('Erreur lors de la suppression du champ:', error);
       throw error;
     }
-  },
-
-  // Supprimer tous les champs d'une action
-  async deleteByAction(actionId) {
-    const db = getTursoClient();
-    try {
-      await db.execute({
-        sql: 'DELETE FROM action_fields WHERE action_id = ?',
-        args: [actionId]
-      });
-      return true;
-    } catch (error) {
-      console.error('Erreur lors de la suppression des champs:', error);
-      throw error;
-    }
   }
 };

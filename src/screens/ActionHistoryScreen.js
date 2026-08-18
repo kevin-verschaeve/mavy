@@ -18,7 +18,6 @@ import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import SwipeableRow from '../components/SwipeableRow';
 import {
-  formatRelativeDate,
   formatElapsedBetween,
   formatDayCount,
   toISODate,
@@ -27,7 +26,7 @@ import {
   DEFAULT_WARN_DAYS,
 } from '../utils/dateUtils';
 import Header from '../components/Header';
-import { colors, statusColors, spacing, typography, borderRadius, shadows, touchTargets } from '../constants/theme';
+import { colors, statusColors, spacing, typography, borderRadius, shadows } from '../constants/theme';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 

@@ -75,42 +75,6 @@ export const entryService = {
     }
   },
 
-  // Récupérer toutes les entrées récentes (toutes catégories confondues)
-  async getRecent(limit = 50) {
-    const db = getTursoClient();
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      throw new Error('Aucun utilisateur sélectionné');
-    }
-
-    try {
-      const result = await db.execute({
-        sql: `
-          SELECT
-            e.id,
-            e.notes,
-            e.created_at,
-            a.name as action_name,
-            c.name as category_name,
-            c.icon as category_icon,
-            c.color as category_color
-          FROM entries e
-          JOIN actions a ON e.action_id = a.id
-          JOIN categories c ON a.category_id = c.id
-          WHERE c.user_id = ?
-          ORDER BY e.created_at DESC
-          LIMIT ?
-        `,
-        args: [userId, limit]
-      });
-      return result.rows;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des entrées récentes:', error);
-      throw error;
-    }
-  },
-
   // Mettre à jour une entrée (modification de la date)
   async update(id, newDate) {
     const db = getTursoClient();
