@@ -20,6 +20,7 @@ import SearchBar from '../components/SearchBar';
 import Input from '../components/Input';
 import GradientButton from '../components/GradientButton';
 import IconPicker from '../components/IconPicker';
+import ActionSheet from '../components/ActionSheet';
 import Header from '../components/Header';
 import {
   colors,
@@ -45,6 +46,7 @@ export default function HomeScreen({ navigation }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showIconPickerForEdit, setShowIconPickerForEdit] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [menuCategory, setMenuCategory] = useState(null);
   const editNameRef = useRef(null);
 
   const { showToast } = useToast();
@@ -196,17 +198,18 @@ export default function HomeScreen({ navigation }) {
     return categoryColors[index % categoryColors.length];
   };
 
-  const handleCategoryLongPress = (category) => {
-    Alert.alert(
-      category.name,
-      'Que voulez-vous faire ?',
-      [
-        { text: 'Modifier', onPress: () => handleEditCategory(category) },
-        { text: 'Supprimer', onPress: () => handleDeleteCategory(category), style: 'destructive' },
-        { text: 'Annuler', style: 'cancel' }
-      ]
-    );
-  };
+  const menuOptions = useMemo(() => {
+    if (!menuCategory) return [];
+    return [
+      { label: 'Modifier', icon: 'create-outline', onPress: () => handleEditCategory(menuCategory) },
+      {
+        label: 'Supprimer',
+        icon: 'trash-outline',
+        destructive: true,
+        onPress: () => handleDeleteCategory(menuCategory),
+      },
+    ];
+  }, [menuCategory]);
 
   const renderCategory = ({ item, index }) => {
     const accentColor = item.color || getCategoryColor(index);
@@ -219,7 +222,7 @@ export default function HomeScreen({ navigation }) {
           categoryName: item.name,
           colorIndex: index
         })}
-        onLongPress={() => handleCategoryLongPress(item)}
+        onLongPress={() => setMenuCategory(item)}
         activeOpacity={0.7}
       >
         {item.icon && (
@@ -391,6 +394,14 @@ export default function HomeScreen({ navigation }) {
         selected={editIcon}
         onSelect={setEditIcon}
         onClose={() => setShowIconPickerForEdit(false)}
+      />
+
+      <ActionSheet
+        visible={!!menuCategory}
+        title={menuCategory?.name}
+        subtitle="Que voulez-vous faire ?"
+        options={menuOptions}
+        onClose={() => setMenuCategory(null)}
       />
     </View>
   );

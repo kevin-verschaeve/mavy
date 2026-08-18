@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
   TouchableOpacity,
   Alert,
   Platform,
@@ -47,9 +48,16 @@ function computeDueDateInfo(action, lastEntry) {
   return { dueDate: due.dueDate, daysUntilDue, status };
 }
 
+// Taille d'une page d'historique. Assez grande pour remplir l'écran d'un coup,
+// assez petite pour que l'ouverture reste instantanée sur une action tenue
+// depuis des années.
+const PAGE_SIZE = 30;
+
 export default function ActionHistoryScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
   const [entries, setEntries] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [actionData, setActionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,14 +71,19 @@ export default function ActionHistoryScreen({ route, navigation }) {
     loadData();
   }, []);
 
+  // Recharge la première page. Après une modification (date, suppression) les
+  // pages suivantes sont invalidées : on repart du début plutôt que de recoller
+  // des pages calculées sur un ordre qui a changé.
   const loadData = async () => {
     try {
-      const [data, action] = await Promise.all([
-        entryService.getByAction(actionId),
+      const [data, action, total] = await Promise.all([
+        entryService.getByAction(actionId, { limit: PAGE_SIZE, offset: 0 }),
         actionService.getById(actionId),
+        entryService.countByAction(actionId),
       ]);
       setEntries(data);
       setActionData(action);
+      setTotalCount(total);
       return { entries: data, action };
     } catch (error) {
       console.error('Erreur lors du chargement de l\'historique:', error);
@@ -78,6 +91,28 @@ export default function ActionHistoryScreen({ route, navigation }) {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || refreshing || entries.length >= totalCount) return;
+
+    setLoadingMore(true);
+    try {
+      const next = await entryService.getByAction(actionId, {
+        limit: PAGE_SIZE,
+        offset: entries.length,
+      });
+      // `entries` peut avoir changé entre-temps (suppression, rechargement) :
+      // on concatène sur l'état courant et on écarte les doublons éventuels.
+      setEntries((current) => {
+        const seen = new Set(current.map((entry) => entry.id));
+        return [...current, ...next.filter((entry) => !seen.has(entry.id))];
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement de la page suivante:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -241,13 +276,16 @@ export default function ActionHistoryScreen({ route, navigation }) {
     const isConfigurable = item.is_configurable === 1;
     const nextEntry = index < entries.length - 1 ? entries[index + 1] : null;
     const isLatest = index === 0;
+    // La dernière entrée chargée n'est pas forcément la plus ancienne : tant
+    // qu'une page reste à charger, le rail continue de descendre.
+    const hasMoreBelow = nextEntry || entries.length < totalCount;
 
     return (
       <View style={styles.timelineRow}>
         {/* Rail : pastille alignée sur la date, trait qui descend vers l'entrée suivante */}
         <View style={styles.rail}>
           <View style={[styles.railDot, isLatest && styles.railDotLatest]} />
-          {nextEntry && <View style={styles.railLine} />}
+          {hasMoreBelow && <View style={styles.railLine} />}
         </View>
 
         <View style={styles.timelineContent}>
@@ -298,7 +336,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
       <Header
         title={actionName}
         subtitle="Historique"
-        count={entries.length}
+        count={totalCount}
         onBack={() => navigation.goBack()}
       />
 
@@ -309,6 +347,8 @@ export default function ActionHistoryScreen({ route, navigation }) {
         renderItem={renderEntry}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -316,6 +356,14 @@ export default function ActionHistoryScreen({ route, navigation }) {
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator
+              style={styles.footerLoader}
+              color={colors.primary}
+            />
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -477,6 +525,9 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
     paddingVertical: spacing.sm,
+  },
+  footerLoader: {
+    paddingVertical: spacing.lg,
   },
   emptyContainer: {
     alignItems: 'center',

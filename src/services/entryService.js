@@ -2,8 +2,10 @@ import { getTursoClient } from '../config/turso';
 import { getCurrentUserId } from './userService';
 
 export const entryService = {
-  // Créer une nouvelle entrée (quand on clique sur un bouton d'action)
-  async create(actionId, notes = '', fieldValues = null) {
+  // Créer une nouvelle entrée (quand on clique sur un bouton d'action).
+  // `createdAt` (format `YYYY-MM-DD`) permet d'antidater une action faite hier :
+  // absent, la base applique son défaut `DATE('now')`.
+  async create(actionId, notes = '', fieldValues = null, createdAt = null) {
     const db = getTursoClient();
     const userId = await getCurrentUserId();
 
@@ -27,10 +29,15 @@ export const entryService = {
       }
 
       const fieldValuesJson = fieldValues ? JSON.stringify(fieldValues) : null;
-      const result = await db.execute({
-        sql: 'INSERT INTO entries (action_id, notes, field_values) VALUES (?, ?, ?)',
-        args: [actionId, notes, fieldValuesJson]
-      });
+      const result = createdAt
+        ? await db.execute({
+            sql: 'INSERT INTO entries (action_id, notes, field_values, created_at) VALUES (?, ?, ?, ?)',
+            args: [actionId, notes, fieldValuesJson, createdAt]
+          })
+        : await db.execute({
+            sql: 'INSERT INTO entries (action_id, notes, field_values) VALUES (?, ?, ?)',
+            args: [actionId, notes, fieldValuesJson]
+          });
       // libsql renvoie un BigInt : non sérialisable dans les params de navigation
       return Number(result.lastInsertRowid);
     } catch (error) {
@@ -39,8 +46,13 @@ export const entryService = {
     }
   },
 
-  // Récupérer toutes les entrées d'une action avec les détails
-  async getByAction(actionId) {
+  // Récupérer une page d'entrées d'une action, de la plus récente à la plus
+  // ancienne. Une action tenue depuis des années accumule des centaines de
+  // lignes : l'écran d'historique les charge par paquets (scroll infini) plutôt
+  // que de tout rapatrier à chaque ouverture.
+  // `id` départage les entrées de même date, sinon leur ordre relatif varie d'une
+  // page à l'autre et une entrée peut être sautée ou dupliquée à la jointure.
+  async getByAction(actionId, { limit = 30, offset = 0 } = {}) {
     const db = getTursoClient();
     const userId = await getCurrentUserId();
 
@@ -64,13 +76,42 @@ export const entryService = {
           JOIN actions a ON e.action_id = a.id
           JOIN categories c ON a.category_id = c.id
           WHERE e.action_id = ? AND c.user_id = ?
-          ORDER BY e.created_at DESC
+          ORDER BY e.created_at DESC, e.id DESC
+          LIMIT ? OFFSET ?
         `,
-        args: [actionId, userId]
+        args: [actionId, userId, limit, offset]
       });
       return result.rows;
     } catch (error) {
       console.error('Erreur lors de la récupération des entrées:', error);
+      throw error;
+    }
+  },
+
+  // Nombre total d'entrées d'une action : l'écran d'historique n'en charge
+  // qu'une page, mais affiche le total dans son en-tête.
+  async countByAction(actionId) {
+    const db = getTursoClient();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Aucun utilisateur sélectionné');
+    }
+
+    try {
+      const result = await db.execute({
+        sql: `
+          SELECT COUNT(*) AS total
+          FROM entries e
+          JOIN actions a ON e.action_id = a.id
+          JOIN categories c ON a.category_id = c.id
+          WHERE e.action_id = ? AND c.user_id = ?
+        `,
+        args: [actionId, userId]
+      });
+      return Number(result.rows[0]?.total ?? 0);
+    } catch (error) {
+      console.error('Erreur lors du comptage des entrées:', error);
       throw error;
     }
   },
@@ -165,8 +206,13 @@ export const entryService = {
     }
   },
 
-  // Récupérer la dernière entrée d'une action
-  async getLastEntry(actionId) {
+  // Récupérer, en une seule requête, la dernière entrée de chaque action d'une
+  // catégorie. Remplace la boucle `getLastEntry` par action : chaque appel étant
+  // un aller-retour réseau vers Turso, une catégorie de 15 actions coûtait 15
+  // latences en série au lieu d'une.
+  // Retourne un objet indexé par `action_id`, dans la forme attendue par les
+  // cartes : `{ [actionId]: { created_at } | null }`.
+  async getLastEntriesByCategory(categoryId) {
     const db = getTursoClient();
     const userId = await getCurrentUserId();
 
@@ -177,18 +223,26 @@ export const entryService = {
     try {
       const result = await db.execute({
         sql: `
-          SELECT e.* FROM entries e
-          JOIN actions a ON e.action_id = a.id
+          SELECT
+            a.id AS action_id,
+            MAX(e.created_at) AS created_at
+          FROM actions a
           JOIN categories c ON a.category_id = c.id
-          WHERE e.action_id = ? AND c.user_id = ?
-          ORDER BY e.created_at DESC
-          LIMIT 1
+          LEFT JOIN entries e ON e.action_id = a.id
+          WHERE a.category_id = ? AND c.user_id = ?
+          GROUP BY a.id
         `,
-        args: [actionId, userId]
+        args: [categoryId, userId]
       });
-      return result.rows[0] || null;
+
+      const byAction = {};
+      for (const row of result.rows) {
+        // `LEFT JOIN` : une action sans entrée remonte avec `created_at` à NULL
+        byAction[row.action_id] = row.created_at ? { created_at: row.created_at } : null;
+      }
+      return byAction;
     } catch (error) {
-      console.error('Erreur lors de la récupération de la dernière entrée:', error);
+      console.error('Erreur lors de la récupération des dernières entrées:', error);
       throw error;
     }
   }

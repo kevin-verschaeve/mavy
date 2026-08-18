@@ -71,7 +71,7 @@ const STATUS_ICONS = {
   ok: 'checkmark-circle',
 };
 
-export default function ActionButton({ action, onPress, onHistoryPress, onLongPress, lastEntry }) {
+export default function ActionButton({ action, onPress, onRecordLongPress, onHistoryPress, onLongPress, lastEntry }) {
   const { status, dueLabel, everyLabel } = computeReminder(action, lastEntry);
   const palette = statusColors[status] || statusColors.neutral;
   const isConfigurable = action.is_configurable === 1;
@@ -122,13 +122,16 @@ export default function ActionButton({ action, onPress, onHistoryPress, onLongPr
         )}
       </TouchableOpacity>
 
-      {/* Action principale : enregistrer une entrée */}
+      {/* Action principale : enregistrer une entrée.
+          Appui long : choisir la date, pour une action faite hier. */}
       <TouchableOpacity
         style={[styles.recordButton, { backgroundColor: palette.main }]}
         onPress={onPress}
+        onLongPress={onRecordLongPress}
         activeOpacity={0.8}
         accessibilityLabel={`Enregistrer ${action.name}`}
         accessibilityRole="button"
+        accessibilityHint="Appui long pour choisir la date"
       >
         <Ionicons
           name={isConfigurable ? 'add' : 'checkmark'}

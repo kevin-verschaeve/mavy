@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { actionService } from '../services/actionService';
 import { entryService } from '../services/entryService';
 import ActionButton, { computeReminder } from '../components/ActionButton';
+import ActionSheet from '../components/ActionSheet';
 import Header from '../components/Header';
 import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
@@ -172,8 +173,12 @@ export default function CategoryScreen({ route, navigation }) {
   const [reminderWarnDays, setReminderWarnDays] = useState(30);
   const [reminderCustomDays, setReminderCustomDays] = useState('');
   const [reminderFixedDate, setReminderFixedDate] = useState(null);
-  // 'new' = formulaire de création, 'edit' = modal de rappel, null = fermé
+  const [menuAction, setMenuAction] = useState(null);
+  // 'new' = formulaire de création, 'edit' = modal de rappel,
+  // 'entry' = date d'une entrée antidatée, null = fermé
   const [datePickerTarget, setDatePickerTarget] = useState(null);
+  const [entryDateAction, setEntryDateAction] = useState(null);
+  const [entryDate, setEntryDate] = useState(new Date());
   const renameInputRef = useRef(null);
 
   const { showToast } = useToast();
@@ -191,14 +196,13 @@ export default function CategoryScreen({ route, navigation }) {
 
   const loadActions = async () => {
     try {
-      const data = await actionService.getByCategory(categoryId);
+      // Les deux requêtes sont indépendantes : en parallèle, le chargement coûte
+      // une latence réseau au lieu de deux.
+      const [data, entries] = await Promise.all([
+        actionService.getByCategory(categoryId),
+        entryService.getLastEntriesByCategory(categoryId),
+      ]);
       setActions(data);
-
-      const entries = {};
-      for (const action of data) {
-        const lastEntry = await entryService.getLastEntry(action.id);
-        entries[action.id] = lastEntry;
-      }
       setLastEntries(entries);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger les actions');
@@ -280,20 +284,39 @@ export default function CategoryScreen({ route, navigation }) {
     }
   };
 
-  const handleActionPress = async (action) => {
-    if (action.is_configurable === 1) {
-      navigation.navigate('AddEntry', { action });
-      return;
-    }
-
+  // `date` absente = aujourd'hui (la base applique son défaut `DATE('now')`).
+  const recordEntry = async (action, date = null) => {
+    const dateOnly = date ? toISODate(date) : null;
     try {
-      await entryService.create(action.id);
-      await actionService.consumeReminderDate(action);
-      showToast(`"${action.name}" enregistre`);
+      await entryService.create(action.id, '', null, dateOnly);
+      // Le rappel se consomme sur la date saisie, pas sur aujourd'hui : antidater
+      // une action doit l'éteindre selon la date réelle de réalisation.
+      await actionService.consumeReminderDate(action, date || new Date());
+      showToast(`"${action.name}" enregistré`);
       loadActions();
     } catch (error) {
       Alert.alert('Erreur', 'Impossible d\'enregistrer l\'entrée');
     }
+  };
+
+  const handleActionPress = (action) => {
+    if (action.is_configurable === 1) {
+      navigation.navigate('AddEntry', { action });
+      return;
+    }
+    recordEntry(action);
+  };
+
+  // Appui long sur le bouton ✓ : choisir la date plutôt que d'enregistrer
+  // aujourd'hui puis aller la corriger dans l'historique.
+  const handleRecordLongPress = (action) => {
+    if (action.is_configurable === 1) {
+      navigation.navigate('AddEntry', { action });
+      return;
+    }
+    setEntryDateAction(action);
+    setEntryDate(new Date());
+    setDatePickerTarget('entry');
   };
 
   const handleHistoryPress = (action) => {
@@ -310,30 +333,31 @@ export default function CategoryScreen({ route, navigation }) {
     });
   };
 
-  const handleActionLongPress = (action) => {
+  const menuOptions = useMemo(() => {
+    if (!menuAction) return [];
+
     const options = [
-      { text: 'Renommer', onPress: () => handleRenameAction(action) },
-      { text: 'Rappel', onPress: () => handleOpenReminderModal(action) },
+      { label: 'Renommer', icon: 'create-outline', onPress: () => handleRenameAction(menuAction) },
+      { label: 'Rappel', icon: 'notifications-outline', onPress: () => handleOpenReminderModal(menuAction) },
     ];
 
-    if (action.is_configurable === 1) {
+    if (menuAction.is_configurable === 1) {
       options.push({
-        text: 'Configurer les champs',
-        onPress: () => handleConfigureAction(action)
+        label: 'Configurer les champs',
+        icon: 'options-outline',
+        onPress: () => handleConfigureAction(menuAction),
       });
     }
 
-    options.push(
-      { text: 'Supprimer', onPress: () => handleDeleteAction(action), style: 'destructive' },
-      { text: 'Annuler', style: 'cancel' }
-    );
+    options.push({
+      label: 'Supprimer',
+      icon: 'trash-outline',
+      destructive: true,
+      onPress: () => handleDeleteAction(menuAction),
+    });
 
-    Alert.alert(
-      'Options',
-      `Que voulez-vous faire avec "${action.name}" ?`,
-      options
-    );
-  };
+    return options;
+  }, [menuAction]);
 
   const handleRenameAction = (action) => {
     setRenameValue(action.name);
@@ -413,13 +437,27 @@ export default function CategoryScreen({ route, navigation }) {
     if (!selectedDate) return;
     if (target === 'new') {
       setNewFixedDate(selectedDate);
+    } else if (target === 'entry') {
+      setEntryDate(selectedDate);
+      // Android n'a pas d'étape de confirmation : la sélection vaut validation
+      if (Platform.OS === 'android') {
+        confirmEntryDate(selectedDate);
+      }
     } else {
       setReminderFixedDate(selectedDate);
     }
   };
 
+  const confirmEntryDate = (date) => {
+    const action = entryDateAction;
+    setDatePickerTarget(null);
+    setEntryDateAction(null);
+    if (action) recordEntry(action, date);
+  };
+
   const handleDatePickerDismiss = () => {
     setDatePickerTarget(null);
+    setEntryDateAction(null);
   };
 
   const handleDeleteAction = (action) => {
@@ -456,10 +494,19 @@ export default function CategoryScreen({ route, navigation }) {
       action={item}
       lastEntry={lastEntries[item.id]}
       onPress={() => handleActionPress(item)}
+      onRecordLongPress={() => handleRecordLongPress(item)}
       onHistoryPress={() => handleHistoryPress(item)}
-      onLongPress={() => handleActionLongPress(item)}
+      onLongPress={() => setMenuAction(item)}
     />
   );
+
+  // Le même picker sert trois usages : rappel du formulaire de création, rappel
+  // de la modal d'édition, et date d'une entrée antidatée.
+  const datePickerValue = (datePickerTarget === 'new'
+    ? newFixedDate
+    : datePickerTarget === 'entry'
+      ? entryDate
+      : reminderFixedDate) || new Date();
 
   if (loading) {
     return <Loading message="Chargement des actions..." />;
@@ -640,20 +687,26 @@ export default function CategoryScreen({ route, navigation }) {
       </Pressable>
 
       {datePickerTarget && Platform.OS === 'ios' && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setDatePickerTarget(null)}>
-          <Pressable style={styles.centeredOverlay} onPress={() => setDatePickerTarget(null)}>
+        <Modal visible transparent animationType="fade" onRequestClose={handleDatePickerDismiss}>
+          <Pressable style={styles.centeredOverlay} onPress={handleDatePickerDismiss}>
             <View style={styles.datePickerContainer} onStartShouldSetResponder={() => true}>
               <View style={styles.datePickerHeader}>
-                <TouchableOpacity onPress={() => setDatePickerTarget(null)}>
+                <TouchableOpacity onPress={handleDatePickerDismiss}>
                   <Text style={styles.datePickerCancel}>Annuler</Text>
                 </TouchableOpacity>
-                <Text style={styles.datePickerTitle}>Date du rappel</Text>
-                <TouchableOpacity onPress={() => setDatePickerTarget(null)}>
+                <Text style={styles.datePickerTitle}>
+                  {datePickerTarget === 'entry' ? "Date de l'entrée" : 'Date du rappel'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => datePickerTarget === 'entry'
+                    ? confirmEntryDate(entryDate)
+                    : setDatePickerTarget(null)}
+                >
                   <Text style={styles.datePickerConfirm}>Confirmer</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
-                value={(datePickerTarget === 'new' ? newFixedDate : reminderFixedDate) || new Date()}
+                value={datePickerValue}
                 mode="date"
                 display="spinner"
                 onValueChange={handleDateValueChange}
@@ -666,13 +719,21 @@ export default function CategoryScreen({ route, navigation }) {
 
       {datePickerTarget && Platform.OS === 'android' && (
         <DateTimePicker
-          value={(datePickerTarget === 'new' ? newFixedDate : reminderFixedDate) || new Date()}
+          value={datePickerValue}
           mode="date"
           display="default"
           onValueChange={handleDateValueChange}
           onDismiss={handleDatePickerDismiss}
         />
       )}
+
+      <ActionSheet
+        visible={!!menuAction}
+        title={menuAction?.name}
+        subtitle="Que voulez-vous faire ?"
+        options={menuOptions}
+        onClose={() => setMenuAction(null)}
+      />
     </View>
   );
 }
