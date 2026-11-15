@@ -19,6 +19,7 @@ import { useToast } from '../components/Toast';
 import SwipeableRow from '../components/SwipeableRow';
 import Header from '../components/Header';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
+import { requestReschedule } from '../services/notificationService';
 
 export default function ConfigureActionScreen({ route, navigation }) {
   const { actionId, actionName } = route.params;
@@ -67,6 +68,7 @@ export default function ConfigureActionScreen({ route, navigation }) {
             onPress: async () => {
               try {
                 await actionService.delete(actionId);
+                requestReschedule();
                 showToast('Action supprimée');
                 navigation.dispatch(e.data.action);
               } catch (error) {
