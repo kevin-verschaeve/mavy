@@ -83,15 +83,18 @@ export async function ensurePermissions() {
       });
     }
 
-    const { status } = await Notifications.getPermissionsAsync();
-    if (status === 'granted') return true;
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted || current.status === 'granted') return true;
 
-    // `getPermissionsAsync` renvoie `denied` après un refus définitif : redemander
-    // n'ouvrirait aucune boîte de dialogue, autant ne pas insister.
-    if (status === 'denied') return false;
+    // Ne pas se fier à `status === 'denied'` : sur Android 13+, tant que la
+    // permission POST_NOTIFICATIONS n'a jamais été demandée, les notifications
+    // sont désactivées et expo-notifications renvoie déjà `denied`. Seul
+    // `canAskAgain` distingue « jamais demandé » d'un refus définitif — sans ça,
+    // la boîte de dialogue n'apparaît jamais et aucun rappel n'est programmé.
+    if (!current.canAskAgain) return false;
 
-    const { status: requested } = await Notifications.requestPermissionsAsync();
-    return requested === 'granted';
+    const requested = await Notifications.requestPermissionsAsync();
+    return Boolean(requested.granted || requested.status === 'granted');
   } catch (error) {
     console.warn('Permissions de notification indisponibles', error);
     return false;
@@ -126,7 +129,6 @@ function buildContent(action, isDue, daysUntilDue) {
       categoryId: Number(action.category_id),
       categoryName: action.category_name,
     },
-    ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
   };
 }
 
@@ -243,6 +245,8 @@ export async function rescheduleAll() {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date,
+          // Sur Android, le canal se précise dans le trigger, pas dans le contenu
+          ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
         },
       });
     }
@@ -253,6 +257,20 @@ export async function rescheduleAll() {
     console.warn('Replanification des rappels impossible', error);
     return 0;
   }
+}
+
+/**
+ * Replanifie en tâche de fond après une modification (entrée, rappel, action).
+ * Sans ça, un rappel créé ou modifié n'était programmé qu'au prochain retour
+ * de l'app au premier plan. Les appels rapprochés sont regroupés.
+ */
+let rescheduleTimer = null;
+export function requestReschedule() {
+  if (rescheduleTimer) clearTimeout(rescheduleTimer);
+  rescheduleTimer = setTimeout(() => {
+    rescheduleTimer = null;
+    rescheduleAll().catch(() => {});
+  }, 500);
 }
 
 /** Annule toutes les notifications programmées (changement de profil, par ex.). */

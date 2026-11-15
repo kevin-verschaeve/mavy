@@ -19,6 +19,7 @@ import { useToast } from '../components/Toast';
 import Loading from '../components/Loading';
 import Header from '../components/Header';
 import { colors, gradients, spacing, typography, borderRadius, shadows } from '../constants/theme';
+import { requestReschedule } from '../services/notificationService';
 
 export default function AddEntryScreen({ route, navigation }) {
   const { action } = route.params;
@@ -55,6 +56,7 @@ export default function AddEntryScreen({ route, navigation }) {
     try {
       await entryService.create(action.id, '', fieldValues);
       await actionService.consumeReminderDate(action);
+      requestReschedule();
       showToast(`"${action.name}" enregistré`);
       navigation.goBack();
     } catch (error) {

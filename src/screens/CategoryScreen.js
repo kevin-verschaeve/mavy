@@ -25,6 +25,7 @@ import Loading from '../components/Loading';
 import SearchBar from '../components/SearchBar';
 import { toISODate, parseISODate, DEFAULT_WARN_DAYS } from '../utils/dateUtils';
 import { colors, gradients, spacing, typography, borderRadius, touchTargets, shadows } from '../constants/theme';
+import { requestReschedule } from '../services/notificationService';
 
 const INTERVAL_PRESETS = [
   { label: '1 mois', days: 30 },
@@ -292,6 +293,7 @@ export default function CategoryScreen({ route, navigation }) {
       // Le rappel se consomme sur la date saisie, pas sur aujourd'hui : antidater
       // une action doit l'éteindre selon la date réelle de réalisation.
       await actionService.consumeReminderDate(action, date || new Date());
+      requestReschedule();
       showToast(`"${action.name}" enregistré`);
       loadActions();
     } catch (error) {
@@ -421,6 +423,7 @@ export default function CategoryScreen({ route, navigation }) {
 
     try {
       await actionService.updateReminder(reminderAction.id, finalIntervalDays, finalWarnDays, finalDate);
+      requestReschedule();
       setReminderAction(null);
       loadActions();
       showToast(finalIntervalDays || finalDate ? 'Rappel configuré' : 'Rappel supprimé');
@@ -471,6 +474,7 @@ export default function CategoryScreen({ route, navigation }) {
           onPress: async () => {
             try {
               await actionService.delete(action.id);
+              requestReschedule();
               loadActions();
               showToast('Action supprimée');
             } catch (error) {

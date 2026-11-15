@@ -27,6 +27,7 @@ import {
 } from '../utils/dateUtils';
 import Header from '../components/Header';
 import { colors, statusColors, spacing, typography, borderRadius, shadows } from '../constants/theme';
+import { requestReschedule } from '../services/notificationService';
 
 // Échéance du prochain rappel, qu'il soit périodique (court depuis la dernière
 // entrée) ou à date fixe. Retourne null quand aucun rappel n'est configuré.
@@ -160,6 +161,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
     try {
       const dateOnly = toISODate(date);
       await entryService.update(selectedEntry.id, dateOnly);
+      requestReschedule();
       setShowDatePicker(false);
       setSelectedEntry(null);
 
@@ -194,6 +196,7 @@ export default function ActionHistoryScreen({ route, navigation }) {
           onPress: async () => {
             try {
               await entryService.delete(entry.id);
+              requestReschedule();
               loadData();
               showToast('Entrée supprimée');
             } catch (error) {
